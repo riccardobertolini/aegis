@@ -1,0 +1,47 @@
+.topbar {
+  height: var(--topbar-height);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  gap: var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-left { display: flex; align-items: center; gap: var(--space-3); }
+.topbar-route {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+.topbar-right { display: flex; align-items: center; gap: var(--space-3); }
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.topbar-btn:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.topbar-user { display: flex; align-items: center; gap: var(--space-2); }
+.topbar-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-username { font-size: var(--text-sm); color: var(--color-text-muted); }

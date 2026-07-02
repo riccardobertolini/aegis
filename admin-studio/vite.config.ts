@@ -1,20 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
   },
   server: {
-    host: '127.0.0.1',
     port: 5173,
-    strictPort: true,
+    host: '127.0.0.1',
     proxy: {
-      '/admin': { target: 'http://127.0.0.1:8000', changeOrigin: false },
-      '/auth':  { target: 'http://127.0.0.1:8000', changeOrigin: false },
-      '/inference': { target: 'http://127.0.0.1:8000', changeOrigin: false },
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: false,
+        secure: false,
+      },
     },
   },
   build: {
@@ -23,14 +26,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          react: ['react', 'react-dom'],
-          router: ['react-router-dom'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
           query: ['@tanstack/react-query'],
+          charts: ['recharts'],
           forms: ['react-hook-form', 'zod', '@hookform/resolvers'],
         },
       },
     },
   },
-  // No external CDN: all assets bundled
-  base: '/',
+  // Offline-first: no external assets ever loaded at runtime
+  // All fonts are embedded via CSS @font-face from local files
 })

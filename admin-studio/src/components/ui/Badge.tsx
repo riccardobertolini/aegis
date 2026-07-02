@@ -1,8 +1,12 @@
-import { clsx } from 'clsx'
-import styles from './Badge.module.css'
+import type { ReactNode } from 'react'
 
-type Variant = 'default' | 'success' | 'warning' | 'error' | 'primary'
+type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info'
 
-export function Badge({ children, variant = 'default' }: { children: React.ReactNode; variant?: Variant }) {
-  return <span className={clsx(styles.badge, styles[variant])}>{children}</span>
+interface BadgeProps {
+  variant?: BadgeVariant
+  children: ReactNode
+}
+
+export function Badge({ variant = 'default', children }: BadgeProps) {
+  return <span className={`badge badge-${variant}`}>{children}</span>
 }

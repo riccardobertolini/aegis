@@ -1,14 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- No external fonts or CDN: all assets are bundled by Vite -->
-  <title>Aegis Admin Studio</title>
-  <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- No external resources: all assets are local -->
+    <!-- CSP: deny all external connections -->
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://127.0.0.1:8000; frame-ancestors 'none';" />
+    <title>Aegis Admin Studio</title>
+    <link rel="icon" type="image/svg+xml" href="/aegis-icon.svg" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
