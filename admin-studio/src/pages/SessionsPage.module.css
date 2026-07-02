@@ -1,0 +1,10 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); }
+.tableWrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.table th { padding: var(--space-3) var(--space-4); text-align: left; font-weight: 600; background: var(--color-surface); border-bottom: 1px solid var(--color-border); color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; }
+.table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-divider); vertical-align: middle; }
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--color-surface-offset); }
+.mono { font-family: monospace; font-size: var(--text-xs); }
+.muted { font-size: var(--text-xs); color: var(--color-text-muted); }
+.ua { font-size: var(--text-xs); color: var(--color-text-muted); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
