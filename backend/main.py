@@ -5,7 +5,8 @@ Startup sequence:
     2. DB: create all tables
     3. InferenceContainer: scan models/, lazy-load
     4. DocumentContainer: parser + chunker + embedder + chroma + RAG
-    5. Register routers
+    5. TrainingContainer: dataset manager + trainer + experiment tracker
+    6. Register routers
 """
 from __future__ import annotations
 
@@ -30,7 +31,11 @@ async def lifespan(app: FastAPI):
     base_dir = Path(getattr(settings, "base_dir", "."))
     models_root = base_dir / "models"
     data_dir = base_dir / "data"
+    experiments_root = base_dir / "experiments"
+    datasets_root = base_dir / "datasets"
     data_dir.mkdir(parents=True, exist_ok=True)
+    experiments_root.mkdir(parents=True, exist_ok=True)
+    datasets_root.mkdir(parents=True, exist_ok=True)
 
     # --- DB ---
     try:
@@ -75,6 +80,22 @@ async def lifespan(app: FastAPI):
         logger.error("DocumentContainer init failed: %s", exc)
         app.state.document_container = None
 
+    # --- Training ---
+    try:
+        from backend.infrastructure.training.container import build_training_container
+        loader = inference_container.loader if inference_container else None
+        training_container = build_training_container(
+            models_root=models_root,
+            experiments_root=experiments_root,
+            datasets_root=datasets_root,
+            model_loader=loader,
+        )
+        app.state.training_container = training_container
+        logger.info("TrainingContainer ready (datasets=%s, experiments=%s)", datasets_root, experiments_root)
+    except Exception as exc:
+        logger.error("TrainingContainer init failed: %s", exc)
+        app.state.training_container = None
+
     yield
     logger.info("Aegis shutting down")
 
@@ -104,7 +125,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Aegis AI Platform",
         description="Enterprise offline-first AI platform (SSM/Mamba)",
-        version="0.7.0",
+        version="0.8.0",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
@@ -118,7 +139,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.7.0"}
+        return {"status": "ok", "version": "0.8.0"}
 
     return app
 

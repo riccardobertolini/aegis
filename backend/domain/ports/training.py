@@ -1,7 +1,9 @@
-"""Port: Training Engine."""
+"""Port: Training Engine (esteso per Fase 8)."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 
 class JobStatus(str, Enum):
@@ -21,7 +23,36 @@ class TrainingConfig:
     epochs: int = 3
     learning_rate: float = 1e-4
     batch_size: int = 8
+    max_seq_len: int = 512
+    grad_clip: float = 1.0
+    warmup_steps: int = 0
+    save_every_n_steps: int = 100
+    eval_every_n_steps: int = 50
+    seed: int = 42
     extra: dict = field(default_factory=dict)
+
+
+@dataclass
+class CheckpointInfo:
+    job_id: str
+    step: int
+    epoch: int
+    path: str
+    train_loss: float
+    val_loss: Optional[float] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass
+class ExperimentMetrics:
+    job_id: str
+    step: int
+    epoch: int
+    train_loss: float
+    val_loss: Optional[float] = None
+    learning_rate: float = 0.0
+    tokens_per_second: float = 0.0
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -29,7 +60,16 @@ class TrainingJob:
     config: TrainingConfig
     status: JobStatus = JobStatus.PENDING
     progress: float = 0.0
+    current_step: int = 0
+    current_epoch: int = 0
+    best_val_loss: Optional[float] = None
+    output_model_path: Optional[str] = None
+    model_sha256: Optional[str] = None
+    error: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
     logs: list[str] = field(default_factory=list)
+    checkpoints: list[CheckpointInfo] = field(default_factory=list)
 
 
 class ITrainingPort(ABC):
@@ -46,3 +86,14 @@ class ITrainingPort(ABC):
 
     @abstractmethod
     async def list_jobs(self) -> list[TrainingJob]: ...
+
+    @abstractmethod
+    async def get_metrics(self, job_id: str) -> list[ExperimentMetrics]: ...
+
+    @abstractmethod
+    async def list_checkpoints(self, job_id: str) -> list[CheckpointInfo]: ...
+
+    @abstractmethod
+    async def promote_checkpoint(
+        self, job_id: str, step: int, target_model_id: str
+    ) -> str: ...

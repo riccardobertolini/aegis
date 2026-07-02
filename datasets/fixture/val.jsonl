@@ -1,0 +1,3 @@
+{"text": "Mamba models use selective state spaces to process sequences efficiently."}
+{"text": "Local fine-tuning requires only a GPU or CPU — no internet connection needed."}
+{"text": "Dataset versioning uses SHA-256 sidecar files to detect data drift."}

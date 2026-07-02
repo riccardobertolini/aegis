@@ -1,0 +1,20 @@
+{"text": "Aegis is an offline-first AI platform built on Mamba SSM architecture."}
+{"text": "The system processes documents locally without any cloud connectivity."}
+{"text": "State Space Models offer linear complexity compared to quadratic attention."}
+{"text": "Fine-tuning adapts a base model to domain-specific knowledge and tasks."}
+{"text": "All model weights, datasets, and logs remain on the local machine."}
+{"text": "The training pipeline supports gradient clipping and linear warmup scheduling."}
+{"text": "Checkpoints are saved every N steps and can be promoted to production models."}
+{"text": "Each experiment is tracked locally in a JSONL metrics file, no external service."}
+{"text": "RBAC controls which users can start, monitor or cancel training jobs."}
+{"text": "The inference engine automatically detects GPU or falls back to CPU."}
+{"text": "Documents are chunked with sliding window overlap for better context coverage."}
+{"text": "Vector embeddings are stored in ChromaDB, a fully embedded local vector store."}
+{"text": "Intent classification routes user requests to the appropriate engine handler."}
+{"text": "Memory engine persists conversation turns and generates extractive summaries."}
+{"text": "Audit logs use HMAC chaining to detect any tampering with historical records."}
+{"text": "Air-gapped deployment means zero telemetry and zero outbound HTTP traffic."}
+{"text": "Model integrity is verified via SHA-256 hash on every load operation."}
+{"text": "The plugin sandbox executes third-party code with restricted permissions."}
+{"text": "Speech engine provides offline STT and TTS without cloud speech services."}
+{"text": "Backup files use AES-256-GCM encryption with a separate backup passphrase."}
