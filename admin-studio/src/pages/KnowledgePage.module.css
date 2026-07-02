@@ -1,0 +1,13 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.cardHeader { display: flex; justify-content: space-between; align-items: center; }
+.kbName { font-size: var(--text-base); font-weight: 600; margin: 0; }
+.kbDesc { font-size: var(--text-sm); color: var(--color-text-muted); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); padding: var(--space-3); background: var(--color-surface-offset); border-radius: var(--radius-md); }
+.stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.statVal { font-size: var(--text-base); font-weight: 700; }
+.statLabel { font-size: var(--text-xs); color: var(--color-text-muted); }
+.cardActions { display: flex; gap: var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--color-divider); }
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.select { width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: var(--text-sm); }

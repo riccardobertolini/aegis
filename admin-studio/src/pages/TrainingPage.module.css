@@ -1,0 +1,15 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); }
+.list { display: flex; flex-direction: column; gap: var(--space-3); }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.cardTop { display: flex; justify-content: space-between; align-items: flex-start; }
+.jobName { font-weight: 600; font-size: var(--text-base); }
+.jobMeta { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-1); }
+.progressWrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.progressBar { height: 6px; background: var(--color-surface-offset); border-radius: var(--radius-full); overflow: hidden; }
+.progressFill { height: 100%; background: var(--color-primary); border-radius: var(--radius-full); transition: width 0.5s ease; }
+.progressLabel { font-size: var(--text-xs); color: var(--color-text-muted); }
+.completedMeta { font-size: var(--text-sm); color: var(--color-text-muted); }
+.cardActions { display: flex; gap: var(--space-1); }
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+.select { width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: var(--text-sm); }

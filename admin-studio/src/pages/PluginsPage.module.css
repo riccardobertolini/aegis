@@ -1,0 +1,11 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); transition: border-color var(--transition-interactive); }
+.cardEnabled { border-color: var(--color-primary-highlight); }
+.cardHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.pluginName { font-weight: 600; font-size: var(--text-base); }
+.pluginMeta { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; }
+.cardBadges { display: flex; gap: var(--space-1); flex-shrink: 0; }
+.pluginDesc { font-size: var(--text-sm); color: var(--color-text-muted); }
+.caps { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.cardActions { display: flex; gap: var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--color-divider); }
