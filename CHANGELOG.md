@@ -8,6 +8,35 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — Push 11c: Sidebar/routing tests + e2e smoke tests + docs
+
+#### Tests — Unit
+- `tests/unit/test_routing.py`: Verifies that `App.tsx` declares routes `/inference`, `/documents`, `/memory` and imports the three page components
+- `tests/unit/test_sidebar_nav.py`: Verifies `Sidebar.tsx` exposes correct `href` values and human-readable labels for the three new pages
+
+#### Tests — E2E (Playwright)
+- `tests/e2e/conftest.py`: Shared Playwright fixtures (browser, context, page — session-scoped browser for speed)
+- `tests/e2e/test_inference_page.py`: 6 smoke tests — renders, sidebar active, textarea present, 3 sliders, generate reveals output
+- `tests/e2e/test_document_page.py`: 5 smoke tests — renders, sidebar active, dropzone attached, table headers (Name/Status), search input
+- `tests/e2e/test_memory_page.py`: 5 smoke tests — renders, sidebar active, stat cards ≥ 2, session filter, flush button
+
+#### Documentation
+- `docs/ui-pages.md`: Full reference for all Admin Studio pages — routes, component paths, layouts, key behaviours, API contracts
+- `docs/testing_strategy.md`: Updated with E2E layer, new unit test files, CI integration notes, coverage targets
+
+---
+
+### Added — Push 11b: Nuove pagine InferencePage, DocumentPage, MemoryPage
+
+#### Frontend
+- `admin-studio/src/pages/InferencePage.tsx` + `InferencePage.module.css`: Two-column inference playground with sliders (temperature, top-p, repetition penalty, max tokens), model selector, output with token/ms badges
+- `admin-studio/src/pages/DocumentPage.tsx` + `DocumentPage.module.css`: Drag-and-drop upload, indexing status table, per-row Index/Delete actions, search toolbar
+- `admin-studio/src/pages/MemoryPage.tsx` + `MemoryPage.module.css`: Stats bar, paginated memory table, session filter, flush-session and flush-all with confirmation
+- `admin-studio/src/App.tsx`: Routes added for `/inference`, `/documents`, `/memory`
+- `admin-studio/src/components/Sidebar.tsx`: NAV_ITEMS updated with Documents, Inference, Memory + SVG icons
+
+---
+
 ### Added — Phase 6: Security Engine
 
 #### Domain
