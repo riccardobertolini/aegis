@@ -1,0 +1,13 @@
+From: alice@aegis.local
+To: bob@aegis.local
+Subject: Test Email Fixture
+Date: Thu, 02 Jul 2026 10:00:00 +0200
+Content-Type: text/plain; charset=utf-8
+
+Hello Bob,
+
+This is a test email for the Aegis EmailParser fixture.
+The platform is fully offline and air-gapped.
+
+Best,
+Alice

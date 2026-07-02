@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <name>Aegis</name>
+  <type>Enterprise AI</type>
+  <offline>true</offline>
+  <components>
+    <component>Document Engine</component>
+    <component>Knowledge Engine</component>
+    <component>RAG</component>
+  </components>
+</project>
