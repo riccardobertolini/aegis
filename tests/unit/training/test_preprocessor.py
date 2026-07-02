@@ -1,35 +1,36 @@
-"""Unit tests — TextPreprocessor."""
+"""Unit tests for Preprocessor."""
 import pytest
-
-from backend.infrastructure.training.preprocessor import TextPreprocessor
+from backend.infrastructure.training.preprocessor import Preprocessor
 
 
 class _FakeTok:
-    class _Enc:
-        def __init__(self, ids): self.ids = ids
+    """Byte-level fake tokenizer for tests."""
     def encode(self, text: str):
-        return self._Enc(list(text.encode("utf-8")))
+        class Enc:
+            ids = list(text.encode("utf-8"))
+        return Enc()
 
 
-def test_tokenize_short(tmp_path):
-    pp = TextPreprocessor(_FakeTok(), max_seq_len=512)
-    result = pp.tokenize(["hello world"])
-    assert len(result) == 1
-    assert result[0] == list("hello world".encode("utf-8"))
+@pytest.fixture
+def preprocessor():
+    return Preprocessor(_FakeTok(), max_length=16, stride=8)
 
 
-def test_tokenize_long_chunked():
-    pp = TextPreprocessor(_FakeTok(), max_seq_len=10)
-    text = "a" * 25
-    seqs = pp.tokenize([text])
-    assert len(seqs) > 1
-    for s in seqs:
-        assert len(s) <= 10
+def test_chunks_fixed_length(preprocessor):
+    texts = iter(["Hello world", "Fine-tuning is great"])
+    chunks = preprocessor.process_samples(texts)
+    for chunk in chunks:
+        assert len(chunk) == 16
 
 
-def test_make_batches():
-    pp = TextPreprocessor(_FakeTok(), max_seq_len=512)
-    seqs = [list(range(i, i + 5)) for i in range(20)]
-    batches = list(pp.make_batches(seqs, batch_size=4))
-    assert len(batches) == 5
-    assert all(len(b) <= 4 for b in batches)
+def test_pads_tail(preprocessor):
+    # Single short text produces a single padded chunk
+    chunks = preprocessor.process_samples(iter(["Hi"]))
+    assert len(chunks) == 1
+    assert len(chunks[0]) == 16
+    assert chunks[0][-1] == 0  # padding token
+
+
+def test_empty_input(preprocessor):
+    chunks = preprocessor.process_samples(iter([]))
+    assert chunks == []

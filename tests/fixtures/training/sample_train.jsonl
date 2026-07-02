@@ -1,0 +1,10 @@
+{"text": "Il modello Mamba utilizza gli State Space Models per elaborare sequenze in modo efficiente."}
+{"text": "A differenza dei Transformer, Mamba ha complessit\u00e0 lineare rispetto alla lunghezza della sequenza."}
+{"text": "Il fine-tuning locale permette di adattare un modello base senza condividere dati con servizi cloud."}
+{"text": "La pipeline di training include: dataset ingestion, preprocessing, training loop, checkpoint, valutazione."}
+{"text": "Il checkpointing salva lo stato del modello ogni N step per permettere il ripristino in caso di errore."}
+{"text": "La firma crittografica del modello garantisce l'integrit\u00e0 dei pesi prima del deployment."}
+{"text": "L'air-gap compliance richiede che nessun dato esca dalla macchina durante training o inference."}
+{"text": "L'experiment tracker locale registra loss, learning rate e perplexity senza servizi esterni."}
+{"text": "Il dataset versioning permette di tracciare quale versione dei dati ha prodotto quale modello."}
+{"text": "La valutazione offline misura perplexity e accuracy token-level sull'insieme di validazione."}

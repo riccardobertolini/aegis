@@ -1,0 +1,3 @@
+{"text": "La perplexity misura quanto bene un modello linguistico predice un campione di testo."}
+{"text": "Un valore di perplexity basso indica che il modello assegna alta probabilit\u00e0 al testo di test."}
+{"text": "Il learning rate scheduler cosine annealing riduce gradualmente il tasso di apprendimento."}

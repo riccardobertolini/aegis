@@ -1,102 +1,128 @@
-# Phase 8 — Training Engine + Fine-Tuning (Local, Offline)
+# Training Engine — Fase 8
 
-## Overview
+## Panoramica
 
-The Training Engine provides a complete local pipeline for fine-tuning Mamba/SSM models without any cloud dependency, telemetry, or automatic weight download.
+Pipeline di fine-tuning completamente locale per modelli Mamba/SSM.
+Nessun tracking cloud, nessun download automatico di pesi.
 
 ```
-datasets/          ← Drop .jsonl or .txt files here
-experiments/       ← Auto-created: one dir per job
-  <job_id>/
-    config.json    ← TrainingConfig snapshot
-    metrics.jsonl  ← Append-only step metrics
-    summary.json   ← Final run summary
-    checkpoints/
-      step_00000100/
-        model.pt
-        meta.json  ← CheckpointInfo + SHA-256
-models/            ← Promoted models land here (picked up by InferenceEngine)
+                       +------------------+
+    dataset file  -->  | DatasetManager   |  versioning + iter
+                       +------------------+
+                               |
+                       +------------------+
+                       |  Preprocessor    |  tokenize + chunk
+                       +------------------+
+                               |
+              +-------------------------------+
+              |         LocalTrainer          |
+              |  PyTorch loop (CPU o CUDA)    |
+              | AdamW + CosineAnnealing LR   |
+              +-------------------------------+
+             /              |                 \
+   +-----------+   +----------------+   +------------+
+   |Checkpoint |   |ExperimentTrack.|   |  Evaluator |
+   |  Manager  |   | (JSONL locale) |   | ppl + acc  |
+   +-----------+   +----------------+   +------------+
+                               |
+                       +------------------+
+                       |   ModelSigner    |  SHA-256 + HMAC
+                       +------------------+
+                               |
+                       +------------------+
+                       | MambaModelLoader |  re-scan → inference
+                       +------------------+
 ```
 
-## Components
+## Componenti
 
-| Module | Responsibility |
+| File | Responsabilità |
 |---|---|
-| `dataset.py` | Load JSONL/TXT, split train/val/test, SHA-256 versioning |
-| `preprocessor.py` | Tokenise texts, sliding-window chunking, batch iterator |
-| `experiment_tracker.py` | Append-only JSONL metrics, config snapshot, summary |
-| `checkpoint_manager.py` | Save/load/verify checkpoints, promote to `models/` |
-| `trainer.py` | PyTorch training loop (AdamW, LR warmup, grad clip, eval) |
-| `service.py` | ITrainingPort impl, background ThreadPoolExecutor, DI |
+| `dataset.py` | Ingestione JSONL/CSV/TXT, versioning, iterazione |
+| `preprocessor.py` | Tokenizzazione + sliding-window chunking |
+| `trainer.py` | Loop PyTorch, AdamW, CosineAnnealingLR, async |
+| `checkpoint.py` | Salva/carica checkpoint ogni N step |
+| `experiment.py` | Tracker locale append-only (JSONL) |
+| `evaluator.py` | Perplexity + token accuracy offline |
+| `signer.py` | SHA-256 per file + HMAC manifesto |
+| `service.py` | Implementa `ITrainingPort`, coordina tutto |
 | `container.py` | DI factory |
 
-## REST API (`/api/v1/training`)
+## Dataset format
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/jobs` | Start a fine-tuning job (async, returns immediately) |
-| `GET` | `/jobs` | List all jobs |
-| `GET` | `/jobs/{id}` | Get job status + progress |
-| `DELETE` | `/jobs/{id}` | Cancel a running job |
-| `GET` | `/jobs/{id}/metrics` | Step-level metrics (loss, LR, tok/s) |
-| `GET` | `/jobs/{id}/checkpoints` | List saved checkpoints |
-| `POST` | `/jobs/{id}/promote` | Copy checkpoint to `models/` and register |
-| `GET` | `/datasets` | List discovered datasets |
+Il formato preferito è JSONL con campo `text`:
 
-## Dataset Format
-
-**JSONL** (recommended):
 ```jsonl
-{"text": "Sample sentence for training."}
-{"text": "Another example with domain-specific content."}
+{"text": "Testo di training..."}
+{"text": "Altro esempio..."}
 ```
 
-**TXT**: one sample per non-empty line.
+Sono supportati anche CSV (header con colonna `text`) e TXT (una riga = un campione).
 
-Place files under `datasets/`. Subdirectories are scanned recursively.
+## Directory layout a runtime
 
-## Launching a Fine-Tuning Job
+```
+aegis_project/
+├── datasets/          # dataset versionati
+│   └── my-dataset/
+│       └── 20260702T210000Z/
+│           ├── train.jsonl
+│           ├── eval.jsonl
+│           └── meta.json
+├── experiments/       # metriche run
+│   └── <run_id>/
+│       ├── summary.json
+│       └── metrics.jsonl
+├── checkpoints/       # pesi checkpoint
+│   └── <run_id>/
+│       ├── step_000050.pt
+│       └── index.json
+└── models/            # modelli pronti (Fase 1)
+    └── my-finetuned/
+        ├── config.json
+        ├── model.pt
+        ├── tokenizer.json
+        ├── training_info.json
+        └── integrity.json   ← generato da ModelSigner
+```
+
+## Avvio di un job via API
 
 ```bash
-# 1. Place dataset
-cp my_corpus.jsonl datasets/my_corpus.jsonl
+# 1. Ingerisci il dataset
+curl -X POST http://localhost:8000/training/datasets \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"my-ds","source_path":"./data/train.jsonl","split":"train"}'
 
-# 2. Start job via API
-curl -X POST http://localhost:8000/api/v1/training/jobs \
+# 2. Avvia il fine-tuning
+curl -X POST http://localhost:8000/training/jobs \
   -H 'Content-Type: application/json' \
   -d '{
     "base_model_id": "mamba-130m",
-    "dataset_path": "datasets/my_corpus.jsonl",
-    "output_model_id": "mamba-130m-finetuned",
+    "dataset_name": "my-ds",
+    "output_model_id": "mamba-130m-ft",
     "epochs": 3,
     "learning_rate": 1e-4,
-    "batch_size": 4,
-    "max_seq_len": 512
+    "batch_size": 4
   }'
 
-# 3. Poll status
-curl http://localhost:8000/api/v1/training/jobs/<job_id>
+# 3. Monitora
+curl http://localhost:8000/training/jobs/<job_id>
 
-# 4. Promote best checkpoint
-curl -X POST http://localhost:8000/api/v1/training/jobs/<job_id>/promote \
-  -H 'Content-Type: application/json' \
-  -d '{"step": 300, "target_model_id": "mamba-130m-v2"}'
-
-# 5. Inference with promoted model (picked up on next server restart or dynamic scan)
-curl -X POST http://localhost:8000/api/v1/inference/completions \
-  -d '{"model_id": "mamba-130m-v2", "prompt": "Aegis is", "max_tokens": 64}'
+# 4. Verifica integrità modello output
+curl http://localhost:8000/training/models/mamba-130m-ft/verify
 ```
 
-## Hardware Notes
+## Configurazione `.env` aggiuntiva (Fase 8)
 
-- **CPU**: supported via `mamba-minimal`. Training is slow but functional for small models and datasets.
-- **GPU (CUDA)**: `mamba-ssm` provides full CUDA-accelerated training. Recommended for models ≥ 370M params or datasets ≥ 10k samples.
-- `max_concurrent_jobs=1` by default — prevent OOM on single-GPU machines.
+```env
+DATASETS_DIR=datasets
+EXPERIMENTS_DIR=experiments
+CHECKPOINTS_DIR=checkpoints
+MODEL_HMAC_SECRET=cambia-questa-stringa-con-un-segreto-lungo
+```
 
-## Offline Compliance
+## Dipendenze (`requirements/ml.txt`)
 
-- No MLflow, W&B, Neptune, or any remote tracking service.
-- All metrics written to local `experiments/<job_id>/metrics.jsonl`.
-- All weights stay in `experiments/` until explicitly promoted to `models/`.
-- SHA-256 on every checkpoint; verified on load.
-- Dataset SHA-256 sidecar files detect accidental data drift.
+Nessuna nuova dipendenza oltre a PyTorch (già richiesto da Fase 1).
+Se si usa mamba-ssm, il training avviene su GPU; con mamba-minimal su CPU.

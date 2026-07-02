@@ -1,155 +1,193 @@
-"""Training Engine REST API."""
+"""Training Engine REST API.
+
+All endpoints are offline-only, no telemetry.
+
+Endpoints
+---------
+POST   /training/jobs                  — start a fine-tuning job
+GET    /training/jobs                  — list all jobs
+GET    /training/jobs/{job_id}          — get single job
+DELETE /training/jobs/{job_id}          — cancel job
+GET    /training/datasets               — list ingested datasets
+POST   /training/datasets               — ingest a local dataset file
+GET    /training/experiments            — list experiment runs
+GET    /training/experiments/{run_id}/metrics  — metrics JSONL
+GET    /training/checkpoints/{run_id}   — list checkpoints
+POST   /training/models/{model_id}/sign     — sign model
+GET    /training/models/{model_id}/verify   — verify model integrity
+POST   /training/models/{model_id}/evaluate — compute perplexity on eval set
+"""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+import uuid
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/api/v1/training", tags=["training"])
+from backend.domain.ports.training import JobStatus, TrainingConfig, TrainingJob
+
+router = APIRouter(prefix="/training", tags=["Training"])
 
 
-def _svc(request: Request):
-    c = getattr(request.app.state, "training_container", None)
-    if c is None:
-        raise HTTPException(status_code=503, detail="TrainingService not initialised")
-    return c.service
+# ------------------------------------------------------------------
+# Pydantic schemas
+# ------------------------------------------------------------------
 
-
-class JobRequest(BaseModel):
+class StartJobRequest(BaseModel):
     base_model_id: str
-    dataset_path: str
+    dataset_name: str = Field(..., description="Name of an already-ingested dataset")
     output_model_id: str
-    epochs: int = Field(3, ge=1, le=100)
-    learning_rate: float = Field(1e-4, gt=0)
-    batch_size: int = Field(8, ge=1, le=256)
-    max_seq_len: int = Field(512, ge=32, le=8192)
-    grad_clip: float = Field(1.0, gt=0)
-    warmup_steps: int = Field(0, ge=0)
-    save_every_n_steps: int = Field(100, ge=1)
-    eval_every_n_steps: int = Field(50, ge=1)
-    seed: int = 42
+    epochs: int = 3
+    learning_rate: float = 1e-4
+    batch_size: int = 4
+    max_length: int = 512
+    text_field: str = "text"
 
 
-class JobOut(BaseModel):
+class JobResponse(BaseModel):
     job_id: str
     status: str
     progress: float
-    current_step: int
-    current_epoch: int
-    best_val_loss: float | None
-    error: str | None
-    started_at: str | None
-    finished_at: str | None
+    logs: list[str]
 
 
-class PromoteRequest(BaseModel):
-    step: int
-    target_model_id: str
+class IngestRequest(BaseModel):
+    name: str
+    source_path: str = Field(..., description="Absolute or relative path to the source file on this machine")
+    split: str = "train"
+    text_field: str = "text"
 
 
-def _job_out(job) -> JobOut:
-    return JobOut(
-        job_id=job.config.job_id,
-        status=job.status.value,
-        progress=job.progress,
-        current_step=job.current_step,
-        current_epoch=job.current_epoch,
-        best_val_loss=job.best_val_loss,
-        error=job.error,
-        started_at=job.started_at.isoformat() if job.started_at else None,
-        finished_at=job.finished_at.isoformat() if job.finished_at else None,
+class EvaluateRequest(BaseModel):
+    dataset_name: str
+    max_chunks: int = 64
+
+
+# ------------------------------------------------------------------
+# Dependency
+# ------------------------------------------------------------------
+
+def _get_svc():
+    """Resolved at startup by main.py via app.state."""
+    from backend.main import app  # lazy import to avoid circular
+    svc = getattr(app.state, "training_service", None)
+    if svc is None:
+        raise HTTPException(status_code=503, detail="Training engine not initialised")
+    return svc
+
+
+TrainingSvc = Annotated[object, Depends(_get_svc)]
+
+
+# ------------------------------------------------------------------
+# Routes
+# ------------------------------------------------------------------
+
+@router.post("/jobs", response_model=JobResponse, status_code=status.HTTP_202_ACCEPTED)
+async def start_job(req: StartJobRequest, svc: TrainingSvc):
+    job_id = f"job-{uuid.uuid4().hex[:12]}"
+    config = TrainingConfig(
+        job_id=job_id,
+        base_model_id=req.base_model_id,
+        dataset_path=req.dataset_name,
+        output_model_id=req.output_model_id,
+        epochs=req.epochs,
+        learning_rate=req.learning_rate,
+        batch_size=req.batch_size,
+        extra={"max_length": req.max_length, "text_field": req.text_field},
     )
+    job = await svc.start_job(config)
+    return _job_resp(job)
 
 
-@router.post("/jobs", response_model=JobOut, status_code=202)
-async def start_job(body: JobRequest, request: Request):
-    from backend.domain.ports.training import TrainingConfig
-    import uuid
-    cfg = TrainingConfig(
-        job_id=str(uuid.uuid4()),
-        base_model_id=body.base_model_id,
-        dataset_path=body.dataset_path,
-        output_model_id=body.output_model_id,
-        epochs=body.epochs,
-        learning_rate=body.learning_rate,
-        batch_size=body.batch_size,
-        max_seq_len=body.max_seq_len,
-        grad_clip=body.grad_clip,
-        warmup_steps=body.warmup_steps,
-        save_every_n_steps=body.save_every_n_steps,
-        eval_every_n_steps=body.eval_every_n_steps,
-        seed=body.seed,
-    )
-    job = await _svc(request).start_job(cfg)
-    return _job_out(job)
+@router.get("/jobs", response_model=list[JobResponse])
+async def list_jobs(svc: TrainingSvc):
+    jobs = await svc.list_jobs()
+    return [_job_resp(j) for j in jobs]
 
 
-@router.get("/jobs", response_model=list[JobOut])
-async def list_jobs(request: Request):
-    jobs = await _svc(request).list_jobs()
-    return [_job_out(j) for j in jobs]
-
-
-@router.get("/jobs/{job_id}", response_model=JobOut)
-async def get_job(job_id: str, request: Request):
+@router.get("/jobs/{job_id}", response_model=JobResponse)
+async def get_job(job_id: str, svc: TrainingSvc):
     try:
-        job = await _svc(request).get_job(job_id)
+        job = await svc.get_job(job_id)
     except KeyError:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return _job_out(job)
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+    return _job_resp(job)
 
 
-@router.delete("/jobs/{job_id}", status_code=204)
-async def cancel_job(job_id: str, request: Request):
-    await _svc(request).cancel_job(job_id)
-
-
-@router.get("/jobs/{job_id}/metrics")
-async def get_metrics(job_id: str, request: Request):
-    metrics = await _svc(request).get_metrics(job_id)
-    return [
-        {
-            "step": m.step, "epoch": m.epoch,
-            "train_loss": m.train_loss, "val_loss": m.val_loss,
-            "lr": m.learning_rate, "tok_per_sec": m.tokens_per_second,
-            "ts": m.timestamp.isoformat(),
-        }
-        for m in metrics
-    ]
-
-
-@router.get("/jobs/{job_id}/checkpoints")
-async def list_checkpoints(job_id: str, request: Request):
-    ckpts = await _svc(request).list_checkpoints(job_id)
-    return [
-        {
-            "step": c.step, "epoch": c.epoch,
-            "train_loss": c.train_loss, "val_loss": c.val_loss,
-            "path": c.path,
-            "created_at": c.created_at.isoformat() if c.created_at else None,
-        }
-        for c in ckpts
-    ]
-
-
-@router.post("/jobs/{job_id}/promote")
-async def promote(job_id: str, body: PromoteRequest, request: Request):
-    sha256 = await _svc(request).promote_checkpoint(
-        job_id, body.step, body.target_model_id
-    )
-    return {"target_model_id": body.target_model_id, "sha256": sha256}
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_job(job_id: str, svc: TrainingSvc):
+    await svc.cancel_job(job_id)
 
 
 @router.get("/datasets")
-async def list_datasets(request: Request):
-    c = getattr(request.app.state, "training_container", None)
-    if c is None:
-        raise HTTPException(status_code=503, detail="TrainingService not initialised")
-    infos = c.service._dataset_mgr.list_datasets()
-    return [
-        {
-            "name": d.name, "format": d.format, "split": d.split,
-            "num_samples": d.num_samples, "sha256": d.sha256,
-            "path": str(d.path),
-        }
-        for d in infos
-    ]
+def list_datasets(svc: TrainingSvc):
+    return {"datasets": svc.list_datasets()}
+
+
+@router.post("/datasets", status_code=status.HTTP_201_CREATED)
+def ingest_dataset(req: IngestRequest, svc: TrainingSvc):
+    src = Path(req.source_path)
+    if not src.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {req.source_path}")
+    version = svc._datasets.ingest(req.name, src, split=req.split)
+    return version.to_dict()
+
+
+@router.get("/experiments")
+def list_experiments(svc: TrainingSvc):
+    runs = svc.list_experiments()
+    return {"runs": [r.to_dict() for r in runs]}
+
+
+@router.get("/experiments/{run_id}/metrics")
+def get_metrics(run_id: str, svc: TrainingSvc):
+    from dataclasses import asdict
+    metrics = svc.get_experiment_metrics(run_id)
+    return {"run_id": run_id, "metrics": [asdict(m) for m in metrics]}
+
+
+@router.get("/checkpoints/{run_id}")
+def list_checkpoints(run_id: str, svc: TrainingSvc):
+    from dataclasses import asdict
+    ckpts = svc.list_checkpoints(run_id)
+    return {"run_id": run_id, "checkpoints": [asdict(c) for c in ckpts]}
+
+
+@router.post("/models/{model_id}/sign")
+def sign_model(model_id: str, svc: TrainingSvc):
+    try:
+        manifest = svc.sign_model(model_id)
+        return {"model_id": model_id, "signed": True, "files": len(manifest.get("files", {}))}
+    except NotADirectoryError:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+
+
+@router.get("/models/{model_id}/verify")
+def verify_model(model_id: str, svc: TrainingSvc):
+    ok = svc.verify_model(model_id)
+    return {"model_id": model_id, "integrity_ok": ok}
+
+
+@router.post("/models/{model_id}/evaluate")
+def evaluate_model(model_id: str, req: EvaluateRequest, svc: TrainingSvc):
+    try:
+        result = svc.evaluate_model(model_id, req.dataset_name, req.max_chunks)
+        return {"model_id": model_id, **result}
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# ------------------------------------------------------------------
+# Helper
+# ------------------------------------------------------------------
+
+def _job_resp(job: TrainingJob) -> dict:
+    return {
+        "job_id": job.config.job_id,
+        "status": job.status.value,
+        "progress": job.progress,
+        "logs": job.logs,
+    }

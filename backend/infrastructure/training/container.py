@@ -1,29 +1,48 @@
-"""DI factory for Training Engine."""
+"""DI factory for the Training Engine."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+from backend.shared.config import Settings
+from backend.infrastructure.training.dataset import DatasetManager
+from backend.infrastructure.training.experiment import ExperimentTracker
+from backend.infrastructure.training.checkpoint import CheckpointManager
+from backend.infrastructure.training.signer import ModelSigner
 from backend.infrastructure.training.service import TrainingService
 
 
-@dataclass
-class TrainingContainer:
-    service: TrainingService
-
-
 def build_training_container(
-    models_root: Path,
-    experiments_root: Path,
-    datasets_root: Path,
-    model_loader,
-    max_concurrent_jobs: int = 1,
-) -> TrainingContainer:
-    svc = TrainingService(
-        models_root=models_root,
-        experiments_root=experiments_root,
-        datasets_root=datasets_root,
+    settings: Settings,
+    model_loader: Any,
+) -> TrainingService:
+    """Wire all training components and return a ready TrainingService.
+
+    Parameters
+    ----------
+    settings:
+        App settings (provides base paths).
+    model_loader:
+        ``MambaModelLoader`` instance from the Inference container (Phase 1).
+    """
+    models_root = Path(settings.models_dir)  # e.g. "models"
+    datasets_root = Path(getattr(settings, "datasets_dir", "datasets"))
+    experiments_root = Path(getattr(settings, "experiments_dir", "experiments"))
+    checkpoints_root = Path(getattr(settings, "checkpoints_dir", "checkpoints"))
+
+    hmac_secret_str: str = getattr(settings, "model_hmac_secret", "aegis-training-secret")
+    hmac_secret = hmac_secret_str.encode()
+
+    dataset_manager = DatasetManager(datasets_root)
+    tracker = ExperimentTracker(experiments_root)
+    checkpoint_manager = CheckpointManager(checkpoints_root)
+    signer = ModelSigner(hmac_secret=hmac_secret)
+
+    return TrainingService(
         model_loader=model_loader,
-        max_concurrent_jobs=max_concurrent_jobs,
+        dataset_manager=dataset_manager,
+        tracker=tracker,
+        checkpoint_manager=checkpoint_manager,
+        signer=signer,
+        models_root=models_root,
     )
-    return TrainingContainer(service=svc)
