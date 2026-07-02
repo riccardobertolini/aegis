@@ -2,6 +2,7 @@
 import logging
 import logging.handlers
 from pathlib import Path
+from typing import Any
 
 import structlog
 
@@ -36,3 +37,14 @@ def configure_logging(settings: Settings) -> None:
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
     )
+
+
+def get_logger(*args: Any, **kwargs: Any) -> structlog.BoundLogger:
+    """Return a bound structlog logger.
+
+    Usage::
+
+        logger = get_logger(__name__)
+        logger.info("event", key="value")
+    """
+    return structlog.get_logger(*args, **kwargs)
