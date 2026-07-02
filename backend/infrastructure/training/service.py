@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
 from backend.domain.ports.training import (
     ITrainingPort, JobStatus, TrainingConfig, TrainingJob,
+    ExperimentMetrics, CheckpointInfo,
 )
 from backend.infrastructure.training.dataset import DatasetManager
 from backend.infrastructure.training.preprocessor import Preprocessor
@@ -83,6 +85,84 @@ class TrainingService(ITrainingPort):
     async def list_jobs(self) -> list[TrainingJob]:
         return list(self._jobs.values())
 
+    async def get_metrics(self, job_id: str) -> list[ExperimentMetrics]:
+        """Return recorded metrics for *job_id* from the experiment tracker."""
+        try:
+            raw = self._tracker.get_metrics(job_id)
+        except Exception as exc:
+            logger.warning("get_metrics failed for '%s': %s", job_id, exc)
+            return []
+        if not raw:
+            return []
+        # ExperimentTracker.get_metrics may return dicts or dataclass instances
+        result: list[ExperimentMetrics] = []
+        for entry in raw:
+            if isinstance(entry, ExperimentMetrics):
+                result.append(entry)
+            elif isinstance(entry, dict):
+                result.append(ExperimentMetrics(
+                    job_id=entry.get("job_id", job_id),
+                    step=entry.get("step", 0),
+                    epoch=entry.get("epoch", 0),
+                    train_loss=entry.get("train_loss", 0.0),
+                    val_loss=entry.get("val_loss"),
+                    learning_rate=entry.get("learning_rate", 0.0),
+                    tokens_per_second=entry.get("tokens_per_second", 0.0),
+                ))
+        return result
+
+    async def list_checkpoints(self, job_id: str) -> list[CheckpointInfo]:
+        """Return checkpoints saved for *job_id*."""
+        try:
+            raw = self._ckpt.list_checkpoints(job_id)
+        except Exception as exc:
+            logger.warning("list_checkpoints failed for '%s': %s", job_id, exc)
+            return []
+        if not raw:
+            return []
+        result: list[CheckpointInfo] = []
+        for entry in raw:
+            if isinstance(entry, CheckpointInfo):
+                result.append(entry)
+            elif isinstance(entry, dict):
+                result.append(CheckpointInfo(
+                    job_id=entry.get("job_id", job_id),
+                    step=entry.get("step", 0),
+                    epoch=entry.get("epoch", 0),
+                    path=entry.get("path", ""),
+                    train_loss=entry.get("train_loss", 0.0),
+                    val_loss=entry.get("val_loss"),
+                ))
+        return result
+
+    async def promote_checkpoint(
+        self, job_id: str, step: int, target_model_id: str
+    ) -> str:
+        """Copy a checkpoint into models/ so it becomes a loadable model."""
+        checkpoints = await self.list_checkpoints(job_id)
+        match = next((c for c in checkpoints if c.step == step), None)
+        if match is None:
+            raise KeyError(f"No checkpoint at step {step} for job '{job_id}'")
+
+        src = Path(match.path)
+        dest = self._models_root / target_model_id
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(src, dest)
+
+        # Sign the promoted model
+        try:
+            self._signer.sign(dest)
+        except Exception as exc:
+            logger.warning("Could not sign promoted model '%s': %s", target_model_id, exc)
+
+        # Rescan so the loader picks it up immediately
+        if self._loader is not None and hasattr(self._loader, "scan"):
+            self._loader.scan()
+
+        logger.info("Checkpoint step=%d promoted to model '%s' at %s", step, target_model_id, dest)
+        return str(dest)
+
     # ------------------------------------------------------------------
     # Extra API (exposed via router)
     # ------------------------------------------------------------------
@@ -95,9 +175,6 @@ class TrainingService(ITrainingPort):
 
     def get_experiment_metrics(self, run_id: str):
         return self._tracker.get_metrics(run_id)
-
-    def list_checkpoints(self, run_id: str):
-        return self._ckpt.list_checkpoints(run_id)
 
     def verify_model(self, model_id: str) -> bool:
         model_dir = self._models_root / model_id
@@ -171,7 +248,7 @@ class TrainingService(ITrainingPort):
 
             if output_dir:
                 self._signer.sign(Path(output_dir))
-                self._loader.scan()  # re-scan so new model is available
+                self._loader.scan()
                 job.status = JobStatus.COMPLETED
                 job.progress = 1.0
                 job.logs.append(f"Output model: {output_dir}")
