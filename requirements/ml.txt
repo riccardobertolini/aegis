@@ -1,19 +1,23 @@
 # ============================================================
-# Aegis — ML / AI requirements
-# ============================================================
-# IMPORTANT: copy model files manually into models/ before use.
-# NEVER allow automatic download on the air-gapped machine.
+# AEGIS — ML / Inference requirements
+# All models must be pre-downloaded; zero network at runtime.
 # ============================================================
 
-# Embedding (100% local, local_files_only=True)
-# Model: all-MiniLM-L6-v2 → copy to models/embeddings/all-MiniLM-L6-v2/
-sentence-transformers>=2.7.0
-torch>=2.2.0          # CPU build; for GPU: torch>=2.2.0+cu121
-transformers>=4.41.0
-tokenizers>=0.19.0
+# SSM inference (choose ONE — comment the other)
+# GPU (CUDA 11.8+):
+# mamba-ssm>=2.2.2
 
-# SSM inference — GPU (uncomment if CUDA available)
-# mamba-ssm>=2.0.0
+# CPU fallback:
+# mamba-minimal @ file:///opt/models/mamba-minimal  # local copy
+# OR:
+# pip install git+file:///opt/models/mamba-minimal
 
-# SSM inference — CPU fallback (pure Python, slower)
-# mamba-minimal @ file:///path/to/mamba_minimal-1.0-py3-none-any.whl
+# Embedding (sentence-transformers already in base.txt)
+# Models must be in models/embedding/ — no auto-download.
+
+# Translation NMT backend (optional):
+# ctranslate2>=4.2.1
+# sentencepiece>=0.2.0
+
+# Numerical
+numpy>=1.26.4

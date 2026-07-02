@@ -1,13 +1,16 @@
-"""Router package — registers all API routers."""
+"""API router registry."""
 from fastapi import FastAPI
-
-from .documents import router as documents_router
-from .knowledge import router as knowledge_router
-from .intent import router as intent_router
 
 
 def register_routers(app: FastAPI) -> None:
-    """Attach all routers to the FastAPI application."""
-    app.include_router(documents_router)
-    app.include_router(knowledge_router)
+    from backend.api.routers.intent import router as intent_router
+    from backend.api.routers.memory import router as memory_router
+    from backend.api.routers.translation import router as translation_router
+    from backend.api.routers.timeseries import router as timeseries_router
+    from backend.api.routers.logs import router as logs_router
+
     app.include_router(intent_router)
+    app.include_router(memory_router)
+    app.include_router(translation_router)
+    app.include_router(timeseries_router)
+    app.include_router(logs_router)
