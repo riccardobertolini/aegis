@@ -1,0 +1,27 @@
+# ============================================================
+# BASE REQUIREMENTS — installable offline from wheelhouse/
+# ============================================================
+# Build wheelhouse on a connected machine:
+#   pip download -r requirements/base.txt -d wheelhouse/
+# Install on air-gapped machine:
+#   pip install --no-index --find-links=wheelhouse/ -r requirements/base.txt
+# ============================================================
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+sqlmodel>=0.0.19
+aiosqlite>=0.20.0
+duckdb>=0.10.3
+chromadb>=0.5.0
+pypdf>=4.2.0
+python-docx>=1.1.2
+openpyxl>=3.1.2
+python-pptx>=0.6.23
+structlog>=24.1.0
+cryptography>=42.0.5
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+apscheduler>=3.10.4

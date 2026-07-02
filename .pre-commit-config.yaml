@@ -1,0 +1,27 @@
+repos:
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: black
+        language: system
+        types: [python]
+        args: [--line-length=100]
+
+      - id: ruff
+        name: ruff
+        entry: ruff check --fix
+        language: system
+        types: [python]
+
+      - id: mypy
+        name: mypy
+        entry: mypy backend
+        language: system
+        pass_filenames: false
+
+      - id: pytest-collect
+        name: pytest collect
+        entry: pytest --collect-only -q
+        language: system
+        pass_filenames: false

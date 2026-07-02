@@ -1,0 +1,14 @@
+# ============================================================
+# ML / INFERENCE REQUIREMENTS
+# Pin after local testing on target hardware.
+# For GPU (CUDA 12.x):
+#   mamba-ssm>=1.2.0
+#   causal-conv1d>=1.2.0
+# For CPU-only fallback:
+#   mamba-minimal (pure Python reference impl, slower)
+# All wheels must be mirrored into wheelhouse/ml/
+# ============================================================
+
+# Uncomment appropriate line for target hardware:
+# mamba-ssm>=1.2.0        # GPU (CUDA)
+# mamba-minimal>=0.1.0    # CPU fallback
