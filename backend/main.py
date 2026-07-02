@@ -1,11 +1,11 @@
 """Aegis — FastAPI application factory.
 
 Startup sequence:
-    1. Load settings (pydantic-settings, .env)
-    2. Initialise DB (create tables, run Alembic migrations)
-    3. Build InferenceContainer (scan models/, lazy-load)
-    4. Register all routers
-    5. Serve via Uvicorn
+    1. Load settings + configure logging
+    2. DB: create all tables
+    3. InferenceContainer: scan models/, lazy-load
+    4. DocumentContainer: parser + chunker + embedder + chroma + RAG
+    5. Register routers
 """
 from __future__ import annotations
 
@@ -26,7 +26,12 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings)
 
-    # --- DB init ---
+    base_dir = Path(getattr(settings, "base_dir", "."))
+    models_root = base_dir / "models"
+    data_dir = base_dir / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- DB ---
     try:
         from backend.infrastructure.database.engine import create_all_tables
         await create_all_tables()
@@ -34,46 +39,81 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error("DB init failed: %s", exc)
 
-    # --- Inference container ---
-    models_root = Path(settings.base_dir) / "models" if hasattr(settings, "base_dir") else Path("models")
+    # --- Inference ---
+    inference_container = None
     try:
         from backend.infrastructure.inference.container import InferenceContainer
-        container = InferenceContainer.build(
+        inference_container = InferenceContainer.build(
             models_root=models_root,
             default_model_id=getattr(settings, "default_model_id", ""),
             system_prompt=getattr(
-                settings,
-                "system_prompt",
+                settings, "system_prompt",
                 "You are Aegis, a helpful AI assistant running fully offline.",
             ),
         )
-        app.state.inference_container = container
-        logger.info("InferenceContainer ready — models: %s", container.loader.list_available())
+        app.state.inference_container = inference_container
+        logger.info("InferenceContainer ready — models: %s", inference_container.loader.list_available())
     except Exception as exc:
         logger.error("InferenceContainer init failed: %s", exc)
         app.state.inference_container = None
 
+    # --- Document / RAG ---
+    try:
+        from backend.infrastructure.rag.container import DocumentContainer
+        embed_model = getattr(settings, "embed_model", "all-MiniLM-L6-v2")
+        doc_container = DocumentContainer.build(
+            data_dir=data_dir,
+            inference=inference_container.inference if inference_container else _NullInference(),
+            models_root=models_root,
+            embed_model=embed_model,
+            default_model_id=getattr(settings, "default_model_id", ""),
+        )
+        app.state.document_container = doc_container
+        logger.info("DocumentContainer ready (chroma=%s/chroma)", data_dir)
+    except Exception as exc:
+        logger.error("DocumentContainer init failed: %s", exc)
+        app.state.document_container = None
+
     yield
-    # --- Shutdown ---
     logger.info("Aegis shutting down")
+
+
+class _NullInference:
+    """Placeholder inference port when no model is loaded."""
+    async def run(self, request):
+        from backend.domain.ports.inference import InferenceResponse
+        return InferenceResponse(
+            text="[No model loaded. Please load a model first.]",
+            model_id="none",
+            prompt_tokens=0,
+            completion_tokens=0,
+            finish_reason="error",
+        )
+    async def stream(self, request):
+        yield "[No model loaded.]"
+    async def list_models(self):
+        return []
+    async def load_model(self, model_id):
+        pass
+    async def unload_model(self, model_id):
+        pass
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Aegis AI Platform",
         description="Enterprise offline-first AI platform (SSM/Mamba)",
-        version="0.6.0",
+        version="0.7.0",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
     )
-
     from backend.api.routers import register_routers
     register_routers(app)
 
     @app.get("/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.6.0"}
+        return {"status": "ok", "version": "0.7.0"}
 
     return app
 
