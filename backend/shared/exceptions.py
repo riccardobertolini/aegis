@@ -1,58 +1,45 @@
-"""Domain exception hierarchy."""
-from typing import Any
+"""Aegis exception hierarchy."""
 
 
 class AegisBaseError(Exception):
-    """Root exception for all Aegis domain errors."""
-
-    def __init__(self, message: str, **context: Any) -> None:
-        super().__init__(message)
-        self.message = message
-        self.context = context
+    """Root of all Aegis exceptions."""
 
 
-# --- Inference ---
-class ModelNotFoundError(AegisBaseError): ...
-class InferenceError(AegisBaseError): ...
-class ModelLoadError(AegisBaseError): ...
+class ConfigurationError(AegisBaseError):
+    """Invalid or missing configuration."""
 
-# --- Knowledge / Document ---
-class DocumentNotFoundError(AegisBaseError): ...
-class DocumentParseError(AegisBaseError): ...
-class IndexError(AegisBaseError): ...
 
-# --- Security ---
-class AuthenticationError(AegisBaseError): ...
-class AuthorizationError(AegisBaseError): ...
-class TokenExpiredError(AegisBaseError): ...
+class InferenceError(AegisBaseError):
+    """Model inference failure."""
 
-# --- Memory ---
-class SessionNotFoundError(AegisBaseError): ...
 
-# --- Plugin ---
-class PluginLoadError(AegisBaseError): ...
-class PluginPermissionError(AegisBaseError): ...
+class KnowledgeError(AegisBaseError):
+    """Vector store / retrieval failure."""
 
-# --- Training ---
-class TrainingJobError(AegisBaseError): ...
 
-# --- Config ---
-class ConfigError(AegisBaseError): ...
+class DocumentError(AegisBaseError):
+    """Document processing failure."""
 
-# --- Persistence (FASE 2) ---
-class EntityNotFoundError(AegisBaseError): ...
-class DuplicateEntityError(AegisBaseError): ...
-class RepositoryError(AegisBaseError): ...
 
-# --- Encryption (FASE 2) ---
-class EncryptionError(AegisBaseError): ...
-class KeyNotFoundError(AegisBaseError): ...
-class IntegrityError(AegisBaseError): ...
+class TrainingError(AegisBaseError):
+    """Fine-tuning / training failure."""
 
-# --- Storage (FASE 2) ---
-class StorageError(AegisBaseError): ...
-class ChecksumMismatchError(AegisBaseError): ...
 
-# --- Backup (FASE 2) ---
-class BackupError(AegisBaseError): ...
-class RestoreError(AegisBaseError): ...
+class PluginError(AegisBaseError):
+    """Plugin loading or execution failure."""
+
+
+class AuthenticationError(AegisBaseError):
+    """Authentication failure (bad credentials, expired/invalid token)."""
+
+
+class AuthorizationError(AegisBaseError):
+    """Authorization failure (insufficient permissions)."""
+
+
+class IntegrityError(AegisBaseError):
+    """Data or model integrity check failed."""
+
+
+class BackupError(AegisBaseError):
+    """Backup / restore failure."""
