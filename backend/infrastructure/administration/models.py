@@ -2,6 +2,10 @@
 
 Covers: assistants, templates, workflows, rules, categories,
 feature toggles, language config, usage metrics.
+
+NOTE: table names here are prefixed with `admin_` to avoid collisions with
+the core domain models in `backend.infrastructure.database.models`.
+In particular `admin_assistants` vs `assistants` (core AssistantModel).
 """
 from __future__ import annotations
 
@@ -16,11 +20,11 @@ def _now() -> datetime:
 
 
 # ---------------------------------------------------------------------------
-# Assistants
+# Assistants (admin layer — extended config, templates, etc.)
 # ---------------------------------------------------------------------------
 
 class Assistant(SQLModel, table=True):
-    __tablename__ = "assistants"
+    __tablename__ = "admin_assistants"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
@@ -52,11 +56,11 @@ class AssistantTemplate(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# Workflows
+# Workflows (admin layer)
 # ---------------------------------------------------------------------------
 
 class Workflow(SQLModel, table=True):
-    __tablename__ = "workflows"
+    __tablename__ = "admin_workflows"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
@@ -68,11 +72,11 @@ class Workflow(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# Rules
+# Rules (admin layer)
 # ---------------------------------------------------------------------------
 
 class Rule(SQLModel, table=True):
-    __tablename__ = "rules"
+    __tablename__ = "admin_rules"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
@@ -85,16 +89,16 @@ class Rule(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# Categories
+# Categories (admin layer)
 # ---------------------------------------------------------------------------
 
 class Category(SQLModel, table=True):
-    __tablename__ = "categories"
+    __tablename__ = "admin_categories"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     slug: str = Field(index=True)
-    parent_id: Optional[int] = Field(default=None, foreign_key="categories.id")
+    parent_id: Optional[int] = Field(default=None, foreign_key="admin_categories.id")
     description: str = ""
     created_at: datetime = Field(default_factory=_now)
 

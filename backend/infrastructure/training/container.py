@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from backend.shared.config import Settings
 from backend.infrastructure.training.dataset import DatasetManager
 from backend.infrastructure.training.experiment import ExperimentTracker
 from backend.infrastructure.training.checkpoint import CheckpointManager
@@ -13,25 +12,28 @@ from backend.infrastructure.training.service import TrainingService
 
 
 def build_training_container(
-    settings: Settings,
     model_loader: Any,
+    models_root: Path | str = "models",
+    datasets_root: Path | str = "datasets",
+    experiments_root: Path | str = "experiments",
+    checkpoints_root: Path | str = "checkpoints",
+    hmac_secret: bytes = b"aegis-training-secret",
 ) -> TrainingService:
     """Wire all training components and return a ready TrainingService.
 
     Parameters
     ----------
-    settings:
-        App settings (provides base paths).
     model_loader:
-        ``MambaModelLoader`` instance from the Inference container (Phase 1).
+        ``MambaModelLoader`` instance from the Inference container.
+    models_root, datasets_root, experiments_root, checkpoints_root:
+        Filesystem roots for each artifact type.  Accepts str or Path.
+    hmac_secret:
+        Secret for model signing; override in production via settings.
     """
-    models_root = Path(settings.models_dir)  # e.g. "models"
-    datasets_root = Path(getattr(settings, "datasets_dir", "datasets"))
-    experiments_root = Path(getattr(settings, "experiments_dir", "experiments"))
-    checkpoints_root = Path(getattr(settings, "checkpoints_dir", "checkpoints"))
-
-    hmac_secret_str: str = getattr(settings, "model_hmac_secret", "aegis-training-secret")
-    hmac_secret = hmac_secret_str.encode()
+    models_root = Path(models_root)
+    datasets_root = Path(datasets_root)
+    experiments_root = Path(experiments_root)
+    checkpoints_root = Path(checkpoints_root)
 
     dataset_manager = DatasetManager(datasets_root)
     tracker = ExperimentTracker(experiments_root)

@@ -38,15 +38,37 @@ class DocumentService(IDocumentPort):
     # IDocumentPort
     # ------------------------------------------------------------------
 
-    async def ingest_file(self, path: Path) -> ParsedDocument:
+    async def ingest_file(self, path: Path, chunking=None) -> ParsedDocument:
         parsed = self._parser.parse_file(path)
         await self._store(parsed)
         return parsed
 
-    async def ingest_bytes(self, data: bytes, filename: str) -> ParsedDocument:
+    async def ingest_bytes(self, data: bytes, filename: str, chunking=None) -> ParsedDocument:
         parsed = self._parser.parse_bytes(data, filename)
         await self._store(parsed)
         return parsed
+
+    async def get(self, document_id: str) -> ParsedDocument | None:
+        """Retrieve a single document by ID."""
+        if self._repo is not None:
+            try:
+                row = await self._repo.get(document_id)
+                if row is None:
+                    return None
+                return ParsedDocument(
+                    id=str(row.id),
+                    filename=row.original_filename,
+                    mime_type=row.mime_type,
+                    chunks=[],
+                    metadata={
+                        "size_bytes": row.size_bytes,
+                        "checksum_sha256": row.checksum_sha256,
+                        "status": row.status,
+                    },
+                )
+            except Exception as exc:
+                logger.warning("DB get failed for '%s': %s — falling back to memory", document_id, exc)
+        return self._mem_store.get(document_id)
 
     async def delete(self, document_id: str) -> None:
         # Remove from vector store
@@ -61,10 +83,10 @@ class DocumentService(IDocumentPort):
             self._mem_store.pop(document_id, None)
         logger.info("Document '%s' deleted", document_id)
 
-    async def list_documents(self) -> list[ParsedDocument]:
+    async def list_documents(self, page: int = 0, page_size: int = 20) -> list[ParsedDocument]:
         if self._repo is not None:
             try:
-                rows = await self._repo.list_all(limit=200)
+                rows = await self._repo.list_all(limit=page_size)
                 return [
                     ParsedDocument(
                         id=str(r.id),
