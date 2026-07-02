@@ -2,11 +2,12 @@
 
 Startup sequence:
     1. Load settings + configure logging
-    2. DB: create all tables
+    2. DB: create all tables (including admin models)
     3. InferenceContainer: scan models/, lazy-load
     4. DocumentContainer: parser + chunker + embedder + chroma + RAG
     5. TrainingContainer: dataset manager + trainer + experiment tracker
-    6. Register routers
+    6. AdministrationService: orchestration layer (Phase 9)
+    7. Register routers + LocalOnlyMiddleware
 """
 from __future__ import annotations
 
@@ -81,6 +82,7 @@ async def lifespan(app: FastAPI):
         app.state.document_container = None
 
     # --- Training ---
+    training_container = None
     try:
         from backend.infrastructure.training.container import build_training_container
         loader = inference_container.loader if inference_container else None
@@ -95,6 +97,23 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error("TrainingContainer init failed: %s", exc)
         app.state.training_container = None
+
+    # --- Administration ---
+    try:
+        from backend.infrastructure.administration.container import build_admin_container
+        from backend.infrastructure.database.engine import get_async_session_factory
+        admin_service = build_admin_container(
+            settings=settings,
+            session_factory=get_async_session_factory(),
+            security_service=getattr(app.state, "security_service", None),
+            training_service=training_container,
+            inference_container=inference_container,
+        )
+        app.state.admin_service = admin_service
+        logger.info("AdministrationService ready")
+    except Exception as exc:
+        logger.error("AdministrationService init failed: %s", exc)
+        app.state.admin_service = None
 
     yield
     logger.info("Aegis shutting down")
@@ -125,11 +144,16 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Aegis AI Platform",
         description="Enterprise offline-first AI platform (SSM/Mamba)",
-        version="0.8.0",
+        version="0.9.0",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    # Localhost-only guard for /admin and /auth
+    from backend.api.middleware.localhost_only import LocalOnlyMiddleware
+    app.add_middleware(LocalOnlyMiddleware)
+
     from backend.api.routers import register_routers
     register_routers(app)
 
@@ -139,7 +163,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.8.0"}
+        return {"status": "ok", "version": "0.9.0"}
 
     return app
 
