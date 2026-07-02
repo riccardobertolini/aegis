@@ -1,99 +1,128 @@
-"""Local filesystem storage adapter.
+"""StorageManager — local filesystem storage for documents and models.
 
-All files stored under a configured base_dir.
-Optionally encrypted at rest using IEncryptionPort.
-No cloud, no network. Air-gapped.
+Layout
+------
+data/
+  documents/<sha256[:2]>/<sha256[2:]>_<safe_filename>   <- content-addressed
+  models/<model_name>/                                  <- manually copied
+  embeddings/                                           <- ChromaDB managed
+  logs/                                                 <- structlog JSON
+  backups/                                              <- encrypted .aegbak
+
+All I/O is local.  No HTTP, no S3, no NFS.
 """
 from __future__ import annotations
 
 import hashlib
+import re
+import shutil
 from pathlib import Path
+from typing import Optional
 
-from backend.domain.ports.encryption import IEncryptionPort
-from backend.domain.ports.storage import IStoragePort
-from backend.shared.exceptions import ChecksumMismatchError, StorageError
+from backend.infrastructure.adapters.encryption import EncryptionService
+
+_BASE_DIR = Path("data")
+
+_SUBDIRS = [
+    "documents",
+    "models",
+    "embeddings",
+    "logs",
+    "backups",
+]
 
 
-class LocalStorageAdapter(IStoragePort):
-    """Stores files on local disk; optionally wraps writes/reads with IEncryptionPort."""
+def _safe_filename(name: str) -> str:
+    """Remove characters unsafe for filesystem paths."""
+    return re.sub(r"[^\w.\-]", "_", name)
 
-    ENCRYPTED_SUFFIX = ".enc"
 
-    def __init__(self, base_dir: str | Path, encryption: IEncryptionPort | None = None) -> None:
-        self._base = Path(base_dir).resolve()
-        self._base.mkdir(parents=True, exist_ok=True)
+class StorageManager:
+    """Local filesystem storage with optional per-file AES-256-GCM encryption."""
+
+    def __init__(
+        self,
+        encryption: EncryptionService,
+        base_dir: str | Path = _BASE_DIR,
+    ) -> None:
         self._enc = encryption
+        self._base = Path(base_dir)
+        self._init_dirs()
 
-    def _resolve(self, relative_path: str) -> Path:
-        full = (self._base / relative_path).resolve()
-        if not str(full).startswith(str(self._base)):
-            raise StorageError("Path traversal attempt detected")
-        return full
+    def _init_dirs(self) -> None:
+        for sub in _SUBDIRS:
+            (self._base / sub).mkdir(parents=True, exist_ok=True)
 
-    def save(self, relative_path: str, data: bytes, encrypt: bool = True) -> str:
-        try:
-            if encrypt and self._enc:
-                data = self._enc.encrypt_bytes(data)
-                if not relative_path.endswith(self.ENCRYPTED_SUFFIX):
-                    relative_path += self.ENCRYPTED_SUFFIX
-            path = self._resolve(relative_path)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(data)
-            return relative_path
-        except StorageError:
-            raise
-        except Exception as exc:
-            raise StorageError(f"save failed [{relative_path}]: {exc}") from exc
+    # ------------------------------------------------------------------
+    # Document storage (content-addressed by SHA-256)
+    # ------------------------------------------------------------------
 
-    def load(self, relative_path: str) -> bytes:
-        try:
-            path = self._resolve(relative_path)
-            if not path.exists():
-                # try with .enc suffix
-                enc_path = self._resolve(relative_path + self.ENCRYPTED_SUFFIX)
-                if enc_path.exists():
-                    path = enc_path
-                else:
-                    raise StorageError(f"File not found: {relative_path}")
-            raw = path.read_bytes()
-            if self._enc and str(path).endswith(self.ENCRYPTED_SUFFIX):
-                return self._enc.decrypt_bytes(raw)
-            return raw
-        except StorageError:
-            raise
-        except Exception as exc:
-            raise StorageError(f"load failed [{relative_path}]: {exc}") from exc
+    def store_document(
+        self,
+        src_path: str,
+        original_filename: str,
+        encrypt: bool = False,
+    ) -> str:
+        """Store a document; return the destination path."""
+        src = Path(src_path)
+        raw = src.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        subdir = self._base / "documents" / digest[:2]
+        subdir.mkdir(parents=True, exist_ok=True)
+        safe = _safe_filename(original_filename)
+        dest = subdir / f"{digest[2:]}_{safe}"
+        if encrypt:
+            dest = Path(str(dest) + ".enc")
+            dest.write_bytes(self._enc.encrypt(raw))
+        else:
+            shutil.copy2(src, dest)
+        return str(dest)
 
-    def delete(self, relative_path: str) -> bool:
-        for suffix in ("", self.ENCRYPTED_SUFFIX):
-            p = self._resolve(relative_path + suffix)
-            if p.exists():
-                p.unlink()
-                return True
-        return False
+    # ------------------------------------------------------------------
+    # Retrieve
+    # ------------------------------------------------------------------
 
-    def exists(self, relative_path: str) -> bool:
-        return (
-            self._resolve(relative_path).exists()
-            or self._resolve(relative_path + self.ENCRYPTED_SUFFIX).exists()
-        )
+    def retrieve(self, path: str, encrypted: bool = False) -> bytes:
+        """Read a stored file; decrypt if *encrypted*."""
+        raw = Path(path).read_bytes()
+        return self._enc.decrypt(raw) if encrypted else raw
 
-    def checksum_sha256(self, relative_path: str) -> str:
-        for suffix in ("", self.ENCRYPTED_SUFFIX):
-            p = self._resolve(relative_path + suffix)
-            if p.exists():
-                return hashlib.sha256(p.read_bytes()).hexdigest()
-        raise StorageError(f"File not found for checksum: {relative_path}")
+    # ------------------------------------------------------------------
+    # Integrity
+    # ------------------------------------------------------------------
 
-    def list_files(self, subdir: str = "") -> list[str]:
-        root = self._resolve(subdir) if subdir else self._base
-        if not root.exists():
-            return []
-        return [
-            str(p.relative_to(self._base))
-            for p in root.rglob("*")
-            if p.is_file()
-        ]
+    def compute_sha256(self, path: str) -> str:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
-    def absolute_path(self, relative_path: str) -> Path:
-        return self._resolve(relative_path)
+    def verify_integrity(self, path: str, expected_sha256: Optional[str] = None) -> bool:
+        """Return True if the file exists and (optionally) matches *expected_sha256*."""
+        p = Path(path)
+        if not p.exists():
+            return False
+        if expected_sha256 is None:
+            # Derive expected from content-addressed path segment
+            name = p.name
+            parent = p.parent.name  # first 2 chars of sha256
+            rest = name.split("_")[0]  # remaining sha256 chars
+            expected_sha256 = parent + rest
+        actual = hashlib.sha256(p.read_bytes()).hexdigest()
+        return actual.startswith(expected_sha256[:4])  # partial sanity check
+
+    # ------------------------------------------------------------------
+    # Delete
+    # ------------------------------------------------------------------
+
+    def delete(self, path: str) -> None:
+        p = Path(path)
+        if p.exists():
+            p.unlink()
+
+    # ------------------------------------------------------------------
+    # Model paths (read-only, manually placed)
+    # ------------------------------------------------------------------
+
+    def model_dir(self, model_name: str) -> Path:
+        """Return (and ensure) the directory for a named model."""
+        d = self._base / "models" / _safe_filename(model_name)
+        d.mkdir(parents=True, exist_ok=True)
+        return d

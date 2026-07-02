@@ -1,115 +1,120 @@
-"""Local encrypted backup manager.
+"""BackupManager — encrypted local backup and restore.
 
-Creates tar.gz archives of selected data directories,
-encrypts them at rest, stores checksum for integrity verification.
-No network. Air-gapped.
+Backup format (.aegbak)
+-----------------------
+AES-256-GCM encrypted blob whose plaintext is a UTF-8 JSON string:
+{
+  "version": 1,
+  "created_at": "<ISO-8601>",
+  "aegis_version": "0.2.0",
+  "type": "config" | "full",
+  "data": { ... }
+}
+
+No data ever leaves the local machine.
 """
 from __future__ import annotations
 
-import hashlib
-import io
-import shutil
-import tarfile
-import uuid
-from datetime import datetime, timezone
+import json
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List
 
-from backend.domain.entities.backup import Backup, BackupStatus
-from backend.domain.ports.backup_manager import IBackupManagerPort
-from backend.domain.ports.encryption import IEncryptionPort
-from backend.domain.ports.repository import IBackupRepository
-from backend.shared.exceptions import BackupError, RestoreError
+from backend.infrastructure.adapters.encryption import EncryptionService
+from backend.infrastructure.adapters.storage import StorageManager
+
+_BACKUP_DIR = Path("data/backups")
+_AEGIS_VERSION = "0.2.0"
 
 
-class LocalBackupManager(IBackupManagerPort):
-    """Creates encrypted tar.gz backups of local data dirs."""
+class BackupManager:
+    """Creates and restores encrypted local backups."""
 
     def __init__(
         self,
-        backup_dir: str | Path,
-        data_dir: str | Path,
-        encryption: IEncryptionPort,
-        backup_repo: IBackupRepository,
+        storage: StorageManager,
+        encryption: EncryptionService,
+        backup_dir: str | Path = _BACKUP_DIR,
     ) -> None:
-        self._backup_dir = Path(backup_dir)
-        self._data_dir = Path(data_dir)
-        self._backup_dir.mkdir(parents=True, exist_ok=True)
+        self._storage = storage
         self._enc = encryption
-        self._repo = backup_repo
+        self._backup_dir = Path(backup_dir)
+        self._backup_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    # IBackupManagerPort
+    # Internal helpers
     # ------------------------------------------------------------------
 
-    async def create_backup(self, label: str, includes: list[str], initiated_by: str) -> Backup:
-        backup_id = str(uuid.uuid4())
-        archive_name = f"{backup_id}.tar.gz.enc"
-        archive_path = self._backup_dir / archive_name
-        record = Backup()
-        record.id = backup_id
-        record.label = label
-        record.storage_path = str(archive_path)
-        record.includes = includes
-        record.initiated_by = initiated_by
-        record.status = BackupStatus.IN_PROGRESS
-        await self._repo.save(record)
-        try:
-            buf = io.BytesIO()
-            with tarfile.open(fileobj=buf, mode="w:gz") as tar:
-                for component in includes:
-                    src = self._data_dir / component
-                    if src.exists():
-                        tar.add(src, arcname=component)
-            compressed = buf.getvalue()
-            encrypted = self._enc.encrypt_bytes(compressed)
-            archive_path.write_bytes(encrypted)
-            checksum = hashlib.sha256(encrypted).hexdigest()
-            record.status = BackupStatus.COMPLETED
-            record.checksum_sha256 = checksum
-            record.size_bytes = len(encrypted)
-        except Exception as exc:
-            record.status = BackupStatus.FAILED
-            record.error_message = str(exc)
-            await self._repo.save(record)
-            raise BackupError(f"Backup creation failed: {exc}") from exc
-        return await self._repo.save(record)
+    def _ts(self) -> str:
+        return datetime.utcnow().strftime("%Y-%m-%dT%H_%M_%S")
 
-    async def restore_backup(self, backup_id: str) -> None:
-        record = await self._repo.get_by_id(backup_id)
-        if record is None:
-            raise RestoreError(f"Backup not found: {backup_id}")
-        if record.status != BackupStatus.COMPLETED:
-            raise RestoreError(f"Backup {backup_id} is not in COMPLETED state")
-        try:
-            encrypted = Path(record.storage_path).read_bytes()
-            if not await self.verify_backup(backup_id):
-                raise RestoreError("Checksum mismatch — backup may be corrupted")
-            compressed = self._enc.decrypt_bytes(encrypted)
-            buf = io.BytesIO(compressed)
-            with tarfile.open(fileobj=buf, mode="r:gz") as tar:
-                tar.extractall(self._data_dir)  # noqa: S202
-        except RestoreError:
-            raise
-        except Exception as exc:
-            raise RestoreError(f"Restore failed: {exc}") from exc
+    def _wrap(self, backup_type: str, data: Dict[str, Any]) -> bytes:
+        payload = {
+            "version": 1,
+            "created_at": datetime.utcnow().isoformat(),
+            "aegis_version": _AEGIS_VERSION,
+            "type": backup_type,
+            "data": data,
+        }
+        return self._enc.encrypt(json.dumps(payload).encode("utf-8"))
 
-    async def verify_backup(self, backup_id: str) -> bool:
-        record = await self._repo.get_by_id(backup_id)
-        if record is None:
-            return False
-        try:
-            raw = Path(record.storage_path).read_bytes()
-            actual = hashlib.sha256(raw).hexdigest()
-            return actual == record.checksum_sha256
-        except Exception:
-            return False
+    def _unwrap(self, blob: bytes) -> Dict[str, Any]:
+        plaintext = self._enc.decrypt(blob)
+        return json.loads(plaintext.decode("utf-8"))
 
-    async def list_backups(self) -> list[Backup]:
-        return await self._repo.list_all(limit=1000)
+    def _write(self, name: str, blob: bytes) -> str:
+        path = self._backup_dir / name
+        path.write_bytes(blob)
+        return str(path)
 
-    async def delete_backup(self, backup_id: str) -> bool:
-        record = await self._repo.get_by_id(backup_id)
-        if record is None:
-            return False
-        Path(record.storage_path).unlink(missing_ok=True)
-        return await self._repo.delete(backup_id)
+    # ------------------------------------------------------------------
+    # Config backup / restore
+    # ------------------------------------------------------------------
+
+    def backup_config(self, config_data: Dict[str, Any]) -> str:
+        """Encrypt and persist *config_data*; return the backup file path."""
+        blob = self._wrap("config", config_data)
+        return self._write(f"{self._ts()}_config.aegbak", blob)
+
+    def restore_config(self, path: str) -> Dict[str, Any]:
+        """Decrypt and return config data from a backup file."""
+        blob = Path(path).read_bytes()
+        envelope = self._unwrap(blob)
+        return envelope["data"]
+
+    # ------------------------------------------------------------------
+    # Full backup / restore (DB + config)
+    # ------------------------------------------------------------------
+
+    def backup_full(self, db_dump: str, config_data: Dict[str, Any]) -> str:
+        """Create a full backup containing both DB dump and config."""
+        blob = self._wrap("full", {"db_dump": db_dump, "config": config_data})
+        return self._write(f"{self._ts()}_full.aegbak", blob)
+
+    def restore_full(self, path: str) -> Dict[str, Any]:
+        blob = Path(path).read_bytes()
+        envelope = self._unwrap(blob)
+        return envelope["data"]
+
+    # ------------------------------------------------------------------
+    # Listing
+    # ------------------------------------------------------------------
+
+    def list_backups(self) -> List[Dict[str, Any]]:
+        """Return metadata for all backup files in the backup directory."""
+        result = []
+        for p in sorted(self._backup_dir.glob("*.aegbak"), reverse=True):
+            result.append({
+                "filename": p.name,
+                "path": str(p),
+                "size_bytes": p.stat().st_size,
+            })
+        return result
+
+    def purge_old_backups(self, keep: int = 10) -> int:
+        """Delete oldest backups keeping the *keep* most recent. Returns count deleted."""
+        files = sorted(self._backup_dir.glob("*.aegbak"), reverse=True)
+        to_delete = files[keep:]
+        for f in to_delete:
+            f.unlink()
+        return len(to_delete)

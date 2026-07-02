@@ -1,149 +1,169 @@
-"""Local SQLite-backed config manager with encryption support."""
+"""ConfigManager — offline-first configuration with per-assistant overrides.
+
+Storage
+-------
+config/
+  global.json.enc        <- global config (AES-256-GCM encrypted JSON)
+  assistant.<id>.json.enc <- per-assistant overrides
+
+Key lookup order
+----------------
+  get_for_assistant(key, assistant_id)
+    1. assistant.<id> override
+    2. global config
+    3. None (caller decides default)
+
+All reads/writes are synchronous; config is small and in-process.
+No network I/O ever performed.
+"""
 from __future__ import annotations
 
 import json
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from backend.infrastructure.adapters.encryption import EncryptionService
 
-from backend.domain.ports.config_manager import IConfigManagerPort
-from backend.domain.ports.encryption import IEncryptionPort
-from backend.infrastructure.database.models import ConfigEntryModel
-from backend.shared.exceptions import ConfigError
-
-_GLOBAL_SCOPE = "global"
+_CONFIG_DIR = Path("config")
+_GLOBAL_FILE = "global.json.enc"
 
 
-class SQLiteConfigManager(IConfigManagerPort):
-    """Stores config in SQLite config_entries table; sensitive values are encrypted."""
+class ConfigManager:
+    """Encrypted local configuration store with feature-flag support."""
 
-    def __init__(self, session: AsyncSession, encryption: IEncryptionPort | None = None) -> None:
-        self._session = session
+    def __init__(
+        self,
+        encryption: EncryptionService,
+        config_dir: str | Path = _CONFIG_DIR,
+    ) -> None:
         self._enc = encryption
+        self._dir = Path(config_dir)
+        self._dir.mkdir(parents=True, exist_ok=True)
+        self._global: dict[str, Any] = {}
+        self._assistant_overrides: dict[str, dict[str, Any]] = {}
+        self.load()
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Persistence
     # ------------------------------------------------------------------
 
-    async def _get_entry(self, scope: str, key: str) -> ConfigEntryModel | None:
-        stmt = select(ConfigEntryModel).where(
-            ConfigEntryModel.scope == scope,
-            ConfigEntryModel.key == key,
-        )
-        result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+    def _global_path(self) -> Path:
+        return self._dir / _GLOBAL_FILE
 
-    def _decode_value(self, entry: ConfigEntryModel) -> Any:
-        raw = entry.value_json
-        if entry.is_encrypted and self._enc:
-            raw = self._enc.decrypt_str(raw)
-        return json.loads(raw)
+    def _assistant_path(self, assistant_id: str) -> Path:
+        return self._dir / f"assistant.{assistant_id}.json.enc"
 
-    async def _set_entry(self, scope: str, key: str, value: Any, encrypt: bool = False) -> None:
-        raw = json.dumps(value)
-        if encrypt and self._enc:
-            raw = self._enc.encrypt_str(raw)
-        entry = await self._get_entry(scope, key)
-        now = datetime.now(tz=timezone.utc)
-        if entry is None:
-            entry = ConfigEntryModel(
-                id=str(uuid.uuid4()), scope=scope, key=key,
-                value_json=raw, is_encrypted=encrypt,
-                created_at=now, updated_at=now,
+    def load(self) -> None:
+        """Load (decrypt) config from disk.  No-op if files don't exist yet."""
+        p = self._global_path()
+        if p.exists():
+            self._global = json.loads(self._enc.decrypt_str(p.read_text()))
+        for path in self._dir.glob("assistant.*.json.enc"):
+            aid = path.stem.split(".", 1)[1].replace(".json", "")
+            self._assistant_overrides[aid] = json.loads(
+                self._enc.decrypt_str(path.read_text())
             )
-        else:
-            entry.value_json = raw
-            entry.is_encrypted = encrypt
-            entry.updated_at = now
-        await self._session.merge(entry)
-        await self._session.commit()
+
+    def save(self) -> None:
+        """Encrypt and persist current config to disk."""
+        self._global_path().write_text(
+            self._enc.encrypt_str(json.dumps(self._global))
+        )
+        for aid, data in self._assistant_overrides.items():
+            self._assistant_path(aid).write_text(
+                self._enc.encrypt_str(json.dumps(data))
+            )
 
     # ------------------------------------------------------------------
-    # IConfigManagerPort
+    # Global get / set
     # ------------------------------------------------------------------
 
     def get(self, key: str, default: Any = None) -> Any:
-        raise NotImplementedError("Use async get_async instead")
+        """Dot-notation key lookup in global config (e.g. ``global.model_name``)."""
+        parts = key.split(".")
+        node: Any = self._global
+        for part in parts:
+            if not isinstance(node, dict):
+                return default
+            node = node.get(part)
+            if node is None:
+                return default
+        return node
 
     def set(self, key: str, value: Any) -> None:
-        raise NotImplementedError("Use async set_async instead")
+        """Dot-notation key set in global config; creates intermediate dicts."""
+        parts = key.split(".")
+        node = self._global
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
 
-    async def get_async(self, key: str, default: Any = None) -> Any:
-        entry = await self._get_entry(_GLOBAL_SCOPE, key)
-        if entry is None:
-            return default
-        return self._decode_value(entry)
+    # ------------------------------------------------------------------
+    # Per-assistant overrides
+    # ------------------------------------------------------------------
 
-    async def set_async(self, key: str, value: Any, encrypt: bool = False) -> None:
-        await self._set_entry(_GLOBAL_SCOPE, key, value, encrypt=encrypt)
+    def get_for_assistant(
+        self, key: str, assistant_id: str, default: Any = None
+    ) -> Any:
+        """Look up *key* with assistant override > global > default."""
+        overrides = self._assistant_overrides.get(assistant_id, {})
+        parts = key.split(".")
+        # Check assistant override first (strip leading 'assistant.' if present)
+        stripped = parts[1:] if parts[0] == "assistant" else parts
+        node: Any = overrides
+        for part in stripped:
+            if not isinstance(node, dict):
+                node = None
+                break
+            node = node.get(part)
+        if node is not None:
+            return node
+        # Fallback to global
+        return self.get(key, default)
 
-    async def get_assistant_override(self, assistant_id: str, key: str, default: Any = None) -> Any:
-        entry = await self._get_entry(assistant_id, key)
-        if entry is not None:
-            return self._decode_value(entry)
-        return await self.get_async(key, default)
+    def set_for_assistant(self, key: str, assistant_id: str, value: Any) -> None:
+        overrides = self._assistant_overrides.setdefault(assistant_id, {})
+        parts = key.split(".")
+        node = overrides
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
 
-    async def set_assistant_override(self, assistant_id: str, key: str, value: Any) -> None:
-        await self._set_entry(assistant_id, key, value)
+    # ------------------------------------------------------------------
+    # Feature flags
+    # ------------------------------------------------------------------
 
-    async def delete_assistant_override(self, assistant_id: str, key: str) -> None:
-        entry = await self._get_entry(assistant_id, key)
-        if entry:
-            await self._session.delete(entry)
-            await self._session.commit()
-
-    async def is_feature_enabled(self, flag: str, assistant_id: str | None = None) -> bool:
-        key = f"feature_flag.{flag}"
+    def feature_enabled(self, feature: str, assistant_id: Optional[str] = None) -> bool:
         if assistant_id:
-            return bool(await self.get_assistant_override(assistant_id, key, False))
-        return bool(await self.get_async(key, False))
+            return bool(
+                self.get_for_assistant(
+                    f"feature_flags.{feature}", assistant_id, False
+                )
+            )
+        flags = self._global.get("feature_flags", {})
+        return bool(flags.get(feature, False))
 
-    async def set_feature_flag(self, flag: str, enabled: bool, assistant_id: str | None = None) -> None:
-        key = f"feature_flag.{flag}"
-        if assistant_id:
-            await self.set_assistant_override(assistant_id, key, enabled)
-        else:
-            await self.set_async(key, enabled)
+    def enable_feature(self, feature: str) -> None:
+        flags = self._global.setdefault("feature_flags", {})
+        flags[feature] = True
 
-    async def export_config(self, path: str) -> None:
-        """Export all config entries to an encrypted JSON file."""
-        stmt = select(ConfigEntryModel)
-        result = await self._session.execute(stmt)
-        entries = result.scalars().all()
-        data = [
-            {
-                "scope": e.scope, "key": e.key,
-                "value_json": e.value_json, "is_encrypted": e.is_encrypted,
-            }
-            for e in entries
-        ]
-        raw = json.dumps(data, indent=2).encode()
-        if self._enc:
-            raw = self._enc.encrypt_bytes(raw)
-        Path(path).write_bytes(raw)
+    def disable_feature(self, feature: str) -> None:
+        flags = self._global.setdefault("feature_flags", {})
+        flags[feature] = False
 
-    async def import_config(self, path: str) -> None:
-        """Import config from an encrypted JSON file."""
-        raw = Path(path).read_bytes()
-        if self._enc:
-            raw = self._enc.decrypt_bytes(raw)
-        entries = json.loads(raw.decode())
-        now = datetime.now(tz=timezone.utc)
-        for e in entries:
-            existing = await self._get_entry(e["scope"], e["key"])
-            if existing is None:
-                await self._session.merge(ConfigEntryModel(
-                    id=str(uuid.uuid4()),
-                    scope=e["scope"], key=e["key"],
-                    value_json=e["value_json"], is_encrypted=e["is_encrypted"],
-                    created_at=now, updated_at=now,
-                ))
-            else:
-                existing.value_json = e["value_json"]
-                existing.is_encrypted = e["is_encrypted"]
-                existing.updated_at = now
-        await self._session.commit()
+    # ------------------------------------------------------------------
+    # Export / import (plain JSON — for backup use only)
+    # ------------------------------------------------------------------
+
+    def export_plain(self) -> dict[str, Any]:
+        """Return a plain-Python dict (for backup serialisation)."""
+        return {
+            "global": self._global,
+            "assistant_overrides": self._assistant_overrides,
+        }
+
+    def import_plain(self, data: dict[str, Any]) -> None:
+        """Restore from a plain-Python dict (from a backup restore)."""
+        self._global = data.get("global", {})
+        self._assistant_overrides = data.get("assistant_overrides", {})
+        self.save()

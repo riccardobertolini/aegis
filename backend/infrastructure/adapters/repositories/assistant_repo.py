@@ -1,26 +1,26 @@
-"""Concrete SQLite Assistant repository."""
+"""SQLite repository for Assistant entities."""
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 
-from backend.domain.entities.assistant import Assistant
-from backend.domain.ports.repository import IAssistantRepository
-from backend.infrastructure.database.mappers import assistant_to_orm, orm_to_assistant
-from backend.infrastructure.database.models import AssistantModel
-from .base_sqlite import BaseSQLiteRepository
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from backend.domain.models import Assistant
+from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
 
 
-class SQLiteAssistantRepository(BaseSQLiteRepository[Assistant, AssistantModel], IAssistantRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, AssistantModel, assistant_to_orm, orm_to_assistant)
+class AssistantRepository(BaseSQLiteRepository[Assistant]):
+    model = Assistant
 
-    async def list_by_owner(self, owner_id: str) -> list[Assistant]:
-        stmt = select(AssistantModel).where(AssistantModel.owner_id == owner_id)
-        result = await self._session.execute(stmt)
-        return [orm_to_assistant(m) for m in result.scalars().all()]
+    async def find_by_name(self, name: str, session: AsyncSession) -> Optional[Assistant]:
+        result = await session.exec(select(Assistant).where(Assistant.name == name))
+        return result.first()
 
-    async def get_active(self) -> list[Assistant]:
-        stmt = select(AssistantModel).where(AssistantModel.is_active == True)  # noqa: E712
-        result = await self._session.execute(stmt)
-        return [orm_to_assistant(m) for m in result.scalars().all()]
+    async def find_active(self, session: AsyncSession) -> List[Assistant]:
+        result = await session.exec(select(Assistant).where(Assistant.is_active == True))  # noqa: E712
+        return list(result.all())
+
+    async def find_by_owner(self, owner_id: str, session: AsyncSession) -> List[Assistant]:
+        result = await session.exec(select(Assistant).where(Assistant.owner_id == owner_id))
+        return list(result.all())

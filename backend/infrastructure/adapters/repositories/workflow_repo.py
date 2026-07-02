@@ -1,45 +1,35 @@
-"""Concrete SQLite Workflow and Rule repositories."""
+"""SQLite repository for Workflow entities."""
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+from uuid import UUID
 
-from backend.domain.entities.workflow import Rule, Workflow, WorkflowStatus
-from backend.domain.ports.repository import IRuleRepository, IWorkflowRepository
-from backend.infrastructure.database.mappers import orm_to_rule, orm_to_workflow, rule_to_orm, workflow_to_orm
-from backend.infrastructure.database.models import RuleModel, WorkflowModel
-from .base_sqlite import BaseSQLiteRepository
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-
-class SQLiteWorkflowRepository(BaseSQLiteRepository[Workflow, WorkflowModel], IWorkflowRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, WorkflowModel, workflow_to_orm, orm_to_workflow)
-
-    async def list_by_owner(self, owner_id: str) -> list[Workflow]:
-        stmt = select(WorkflowModel).where(WorkflowModel.owner_id == owner_id)
-        result = await self._session.execute(stmt)
-        return [orm_to_workflow(m) for m in result.scalars().all()]
-
-    async def list_active(self) -> list[Workflow]:
-        stmt = select(WorkflowModel).where(WorkflowModel.status == WorkflowStatus.ACTIVE.value)
-        result = await self._session.execute(stmt)
-        return [orm_to_workflow(m) for m in result.scalars().all()]
+from backend.domain.models import Workflow
+from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
 
 
-class SQLiteRuleRepository(BaseSQLiteRepository[Rule, RuleModel], IRuleRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, RuleModel, rule_to_orm, orm_to_rule)
+class WorkflowRepository(BaseSQLiteRepository[Workflow]):
+    model = Workflow
 
-    async def list_by_resource(self, resource: str) -> list[Rule]:
-        stmt = select(RuleModel).where(RuleModel.resource == resource)
-        result = await self._session.execute(stmt)
-        return [orm_to_rule(m) for m in result.scalars().all()]
-
-    async def list_active_ordered(self) -> list[Rule]:
-        stmt = (
-            select(RuleModel)
-            .where(RuleModel.is_active == True)  # noqa: E712
-            .order_by(RuleModel.priority.desc())
+    async def find_by_assistant(
+        self, assistant_id: UUID, session: AsyncSession
+    ) -> List[Workflow]:
+        result = await session.exec(
+            select(Workflow).where(Workflow.assistant_id == str(assistant_id))
         )
-        result = await self._session.execute(stmt)
-        return [orm_to_rule(m) for m in result.scalars().all()]
+        return list(result.all())
+
+    async def find_active(self, session: AsyncSession) -> List[Workflow]:
+        result = await session.exec(
+            select(Workflow).where(Workflow.is_active == True)  # noqa: E712
+        )
+        return list(result.all())
+
+    async def find_by_name(
+        self, name: str, session: AsyncSession
+    ) -> Optional[Workflow]:
+        result = await session.exec(select(Workflow).where(Workflow.name == name))
+        return result.first()

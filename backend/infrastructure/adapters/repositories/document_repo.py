@@ -1,62 +1,39 @@
-"""Concrete SQLite Document/Category/KnowledgeBase repositories."""
+"""SQLite repository for Document entities."""
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+from uuid import UUID
 
-from backend.domain.entities.document import Category, Document, KnowledgeBase
-from backend.domain.ports.repository import ICategoryRepository, IDocumentRepository, IKnowledgeBaseRepository
-from backend.infrastructure.database.mappers import (
-    category_to_orm, document_to_orm, kb_to_orm,
-    orm_to_category, orm_to_document, orm_to_kb,
-)
-from backend.infrastructure.database.models import CategoryModel, DocumentModel, KnowledgeBaseModel
-from .base_sqlite import BaseSQLiteRepository
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from backend.domain.models import Document
+from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
 
 
-class SQLiteDocumentRepository(BaseSQLiteRepository[Document, DocumentModel], IDocumentRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, DocumentModel, document_to_orm, orm_to_document)
+class DocumentRepository(BaseSQLiteRepository[Document]):
+    model = Document
 
-    async def get_by_checksum(self, checksum: str) -> Document | None:
-        stmt = select(DocumentModel).where(DocumentModel.checksum_sha256 == checksum)
-        result = await self._session.execute(stmt)
-        m = result.scalar_one_or_none()
-        return orm_to_document(m) if m else None
+    async def find_by_sha256(self, sha256: str, session: AsyncSession) -> Optional[Document]:
+        result = await session.exec(select(Document).where(Document.sha256 == sha256))
+        return result.first()
 
-    async def list_by_owner(self, owner_id: str) -> list[Document]:
-        stmt = select(DocumentModel).where(DocumentModel.owner_id == owner_id)
-        result = await self._session.execute(stmt)
-        return [orm_to_document(m) for m in result.scalars().all()]
+    async def find_by_knowledge_base(
+        self, knowledge_base_id: UUID, session: AsyncSession
+    ) -> List[Document]:
+        result = await session.exec(
+            select(Document).where(Document.knowledge_base_id == str(knowledge_base_id))
+        )
+        return list(result.all())
 
-    async def list_by_knowledge_base(self, kb_id: str) -> list[Document]:
-        stmt = select(DocumentModel)
-        result = await self._session.execute(stmt)
-        all_docs = [orm_to_document(m) for m in result.scalars().all()]
-        return [d for d in all_docs if kb_id in d.knowledge_base_ids]
+    async def find_by_category(
+        self, category_id: UUID, session: AsyncSession
+    ) -> List[Document]:
+        result = await session.exec(
+            select(Document).where(Document.category_id == str(category_id))
+        )
+        return list(result.all())
 
-
-class SQLiteCategoryRepository(BaseSQLiteRepository[Category, CategoryModel], ICategoryRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, CategoryModel, category_to_orm, orm_to_category)
-
-    async def list_children(self, parent_id: str | None) -> list[Category]:
-        stmt = select(CategoryModel).where(CategoryModel.parent_id == parent_id)
-        result = await self._session.execute(stmt)
-        return [orm_to_category(m) for m in result.scalars().all()]
-
-
-class SQLiteKnowledgeBaseRepository(BaseSQLiteRepository[KnowledgeBase, KnowledgeBaseModel], IKnowledgeBaseRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, KnowledgeBaseModel, kb_to_orm, orm_to_kb)
-
-    async def get_by_name(self, name: str) -> KnowledgeBase | None:
-        stmt = select(KnowledgeBaseModel).where(KnowledgeBaseModel.name == name)
-        result = await self._session.execute(stmt)
-        m = result.scalar_one_or_none()
-        return orm_to_kb(m) if m else None
-
-    async def list_active(self) -> list[KnowledgeBase]:
-        stmt = select(KnowledgeBaseModel).where(KnowledgeBaseModel.is_active == True)  # noqa: E712
-        result = await self._session.execute(stmt)
-        return [orm_to_kb(m) for m in result.scalars().all()]
+    async def find_encrypted(self, session: AsyncSession) -> List[Document]:
+        result = await session.exec(select(Document).where(Document.is_encrypted == True))  # noqa: E712
+        return list(result.all())

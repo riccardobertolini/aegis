@@ -1,111 +1,105 @@
-"""Local Fernet-based encryption adapter (AES-128-CBC + HMAC-SHA256).
+"""EncryptionService — AES-256-GCM local encryption.
 
-Keys are stored ONLY on local disk under data/keys/.
-Never serialised to network. Air-gapped.
+All keys are stored exclusively on local disk (never transmitted).
+Uses PyCA `cryptography` library — pure Python, zero native extensions
+required beyond those bundled with the wheel.
 
-For AES-256-GCM strength use cryptography >= 41 and switch to AESGCM.
-This implementation uses Fernet (safe default) with key versioning.
+Key lifecycle
+-------------
+1. On first instantiation a 256-bit key is generated with `os.urandom(32)`
+   and written to `<key_dir>/aegis_master.key` (chmod 600).
+2. Subsequent instantiations read the same file.
+3. Key rotation: replace the file and re-encrypt all `_enc` columns
+   (rotation utility to be implemented in a future administration phase).
+
+Format
+------
+Every ciphertext is a raw bytes blob:
+    [12 bytes nonce][16 bytes GCM tag][N bytes ciphertext]
+Base64-encoded when stored as a string column.
 """
 from __future__ import annotations
 
 import base64
-import json
 import os
+import stat
 from pathlib import Path
 
-from cryptography.fernet import Fernet, InvalidToken, MultiFernet
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from backend.domain.ports.encryption import IEncryptionPort
-from backend.shared.exceptions import EncryptionError, KeyNotFoundError
+_DEFAULT_KEY_DIR = Path("keys")
+_KEY_FILENAME = "aegis_master.key"
 
 
-class LocalEncryptionAdapter(IEncryptionPort):
-    """Fernet symmetric encryption with local key store and rotation support."""
+class EncryptionService:
+    """Local AES-256-GCM encryption / decryption service."""
 
-    KEY_FILE_NAME = "master.key"
-    KEY_HISTORY_FILE = "key_history.json"
-
-    def __init__(self, keys_dir: str | Path) -> None:
-        self._keys_dir = Path(keys_dir)
-        self._keys_dir.mkdir(parents=True, exist_ok=True)
-        self._active_key_id, self._fernet = self._load_or_create_key()
+    def __init__(self, key_dir: str | Path = _DEFAULT_KEY_DIR) -> None:
+        self._key_dir = Path(key_dir)
+        self._key_dir.mkdir(parents=True, exist_ok=True)
+        self._key = self._load_or_create_key()
+        self._aesgcm = AESGCM(self._key)
 
     # ------------------------------------------------------------------
     # Key management
     # ------------------------------------------------------------------
 
-    def _key_path(self, key_id: str) -> Path:
-        return self._keys_dir / f"{key_id}.key"
+    def _key_path(self) -> Path:
+        return self._key_dir / _KEY_FILENAME
 
-    def _load_or_create_key(self) -> tuple[str, MultiFernet]:
-        """Load existing active key or generate a new one."""
-        index_path = self._keys_dir / "active_key_id.txt"
-        if index_path.exists():
-            key_id = index_path.read_text().strip()
-            key_path = self._key_path(key_id)
-            if not key_path.exists():
-                raise KeyNotFoundError(f"Key file missing: {key_path}")
-            raw = key_path.read_bytes()
-            # Load history for MultiFernet (allows decrypting old ciphertexts)
-            fernets = self._load_all_fernets(raw)
-            return key_id, MultiFernet(fernets)
-        else:
-            return self._generate_new_key()
-
-    def _generate_new_key(self) -> tuple[str, MultiFernet]:
-        import uuid
-        key_id = str(uuid.uuid4())
-        raw = Fernet.generate_key()
-        key_path = self._key_path(key_id)
-        key_path.write_bytes(raw)
-        key_path.chmod(0o600)
-        (self._keys_dir / "active_key_id.txt").write_text(key_id)
-        return key_id, MultiFernet([Fernet(raw)])
-
-    def _load_all_fernets(self, active_raw: bytes) -> list[Fernet]:
-        """Return [active, ...historical] Fernet instances for MultiFernet."""
-        fernets = [Fernet(active_raw)]
-        history_path = self._keys_dir / self.KEY_HISTORY_FILE
-        if history_path.exists():
-            history: list[str] = json.loads(history_path.read_text())
-            for key_id in history:
-                p = self._key_path(key_id)
-                if p.exists():
-                    fernets.append(Fernet(p.read_bytes()))
-        return fernets
+    def _load_or_create_key(self) -> bytes:
+        path = self._key_path()
+        if path.exists():
+            return path.read_bytes()
+        key = os.urandom(32)  # 256-bit AES key
+        path.write_bytes(key)
+        # Restrict permissions to owner only (Unix)
+        try:
+            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+        except NotImplementedError:
+            pass  # Windows — best effort
+        return key
 
     # ------------------------------------------------------------------
-    # IEncryptionPort
+    # Core encrypt / decrypt (bytes)
     # ------------------------------------------------------------------
 
-    def encrypt_bytes(self, plaintext: bytes) -> bytes:
-        try:
-            return self._fernet.encrypt(plaintext)
-        except Exception as exc:
-            raise EncryptionError(f"encrypt_bytes failed: {exc}") from exc
+    def encrypt(self, plaintext: bytes) -> bytes:
+        """Encrypt *plaintext* and return [nonce(12) | tag(16) | ciphertext]."""
+        nonce = os.urandom(12)
+        ciphertext_with_tag = self._aesgcm.encrypt(nonce, plaintext, None)
+        return nonce + ciphertext_with_tag
 
-    def decrypt_bytes(self, ciphertext: bytes) -> bytes:
-        try:
-            return self._fernet.decrypt(ciphertext)
-        except InvalidToken as exc:
-            raise EncryptionError("Decryption failed: invalid token or tampered data") from exc
-        except Exception as exc:
-            raise EncryptionError(f"decrypt_bytes failed: {exc}") from exc
+    def decrypt(self, blob: bytes) -> bytes:
+        """Decrypt a blob produced by :meth:`encrypt`."""
+        nonce = blob[:12]
+        ciphertext_with_tag = blob[12:]
+        return self._aesgcm.decrypt(nonce, ciphertext_with_tag, None)
+
+    # ------------------------------------------------------------------
+    # String helpers (base64)
+    # ------------------------------------------------------------------
 
     def encrypt_str(self, plaintext: str) -> str:
-        return self.encrypt_bytes(plaintext.encode()).decode()
+        """Encrypt a UTF-8 string; return base64-encoded ciphertext."""
+        raw = self.encrypt(plaintext.encode("utf-8"))
+        return base64.b64encode(raw).decode("ascii")
 
-    def decrypt_str(self, ciphertext_b64: str) -> str:
-        return self.decrypt_bytes(ciphertext_b64.encode()).decode()
+    def decrypt_str(self, encoded: str) -> str:
+        """Decrypt a base64-encoded ciphertext back to UTF-8 string."""
+        raw = base64.b64decode(encoded.encode("ascii"))
+        return self.decrypt(raw).decode("utf-8")
 
-    def rotate_key(self, old_ciphertext: bytes, new_key_id: str) -> bytes:
-        """Decrypt with current key set, re-encrypt with fresh key."""
-        plaintext = self.decrypt_bytes(old_ciphertext)
-        new_key_path = self._key_path(new_key_id)
-        if not new_key_path.exists():
-            raise KeyNotFoundError(f"New key not found: {new_key_id}")
-        new_fernet = Fernet(new_key_path.read_bytes())
-        return new_fernet.encrypt(plaintext)
+    # ------------------------------------------------------------------
+    # File helpers
+    # ------------------------------------------------------------------
 
-    def key_id(self) -> str:
-        return self._active_key_id
+    def encrypt_file(self, src: str, dst: str) -> None:
+        """Encrypt file at *src* and write ciphertext to *dst*."""
+        plaintext = Path(src).read_bytes()
+        Path(dst).write_bytes(self.encrypt(plaintext))
+
+    def decrypt_file(self, src: str, dst: str) -> None:
+        """Decrypt file at *src* (ciphertext) and write plaintext to *dst*."""
+        blob = Path(src).read_bytes()
+        Path(dst).write_bytes(self.decrypt(blob))
