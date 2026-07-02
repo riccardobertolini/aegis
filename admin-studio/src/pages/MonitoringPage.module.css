@@ -1,0 +1,13 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); }
+.center { display: flex; justify-content: center; padding: var(--space-16) 0; }
+.headerActions { display: flex; gap: var(--space-2); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: var(--space-4); }
+.metricCard { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.metricTitle { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-muted); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+.metricValue { font-size: var(--text-xl); font-weight: 700; color: var(--color-text); margin: 0; font-variant-numeric: tabular-nums; }
+.metricSub { font-size: var(--text-xs); color: var(--color-text-faint); margin: 0; }
+.progressTrack { height: 6px; background: var(--color-surface-offset); border-radius: var(--radius-full); overflow: hidden; }
+.progressFill { height: 100%; border-radius: var(--radius-full); transition: width 0.4s ease; }
+.progress_default { background: var(--color-primary); }
+.progress_warning { background: var(--color-warning); }
+.progress_error { background: var(--color-error); }

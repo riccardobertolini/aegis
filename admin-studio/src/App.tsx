@@ -11,13 +11,14 @@ import { KnowledgePage } from '@/pages/KnowledgePage'
 import { PluginsPage } from '@/pages/PluginsPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { RolesPage } from '@/pages/RolesPage'
+import { SessionsPage } from '@/pages/SessionsPage'
+import { AuditPage } from '@/pages/AuditPage'
 import { ModelsPage } from '@/pages/ModelsPage'
 import { TrainingPage } from '@/pages/TrainingPage'
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { FeatureTogglesPage } from '@/pages/FeatureTogglesPage'
 import { LanguagesPage } from '@/pages/LanguagesPage'
 import { BackupPage } from '@/pages/BackupPage'
-import { AuditPage } from '@/pages/AuditPage'
 import { MonitoringPage } from '@/pages/MonitoringPage'
 import { TemplatesPage } from '@/pages/TemplatesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -49,22 +50,30 @@ export default function App() {
                 <Routes>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard"          element={<DashboardPage />} />
+                  {/* Assistants */}
                   <Route path="assistants"         element={<AssistantsPage />} />
                   <Route path="assistants/:id"     element={<AssistantDetailPage />} />
+                  {/* Knowledge & Documents */}
                   <Route path="knowledge"          element={<KnowledgePage />} />
-                  <Route path="plugins"            element={<PluginsPage />} />
-                  <Route path="users"              element={<UsersPage />} />
-                  <Route path="roles"              element={<RolesPage />} />
+                  {/* Models & Training */}
                   <Route path="models"             element={<ModelsPage />} />
                   <Route path="training"           element={<TrainingPage />} />
+                  {/* Security */}
+                  <Route path="users"              element={<UsersPage />} />
+                  <Route path="roles"              element={<RolesPage />} />
+                  <Route path="sessions"           element={<SessionsPage />} />
+                  <Route path="audit"              element={<AuditPage />} />
+                  {/* Platform */}
+                  <Route path="plugins"            element={<PluginsPage />} />
                   <Route path="workflows"          element={<WorkflowsPage />} />
                   <Route path="features"           element={<FeatureTogglesPage />} />
                   <Route path="languages"          element={<LanguagesPage />} />
-                  <Route path="backup"             element={<BackupPage />} />
-                  <Route path="audit"              element={<AuditPage />} />
-                  <Route path="monitoring"         element={<MonitoringPage />} />
                   <Route path="templates"          element={<TemplatesPage />} />
+                  {/* System */}
+                  <Route path="backup"             element={<BackupPage />} />
+                  <Route path="monitoring"         element={<MonitoringPage />} />
                   <Route path="settings"           element={<SettingsPage />} />
+                  {/* Fallback */}
                   <Route path="*"                  element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </AppShell>
