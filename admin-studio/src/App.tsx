@@ -8,6 +8,9 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { AssistantsPage } from '@/pages/AssistantsPage'
 import { AssistantDetailPage } from '@/pages/AssistantDetailPage'
 import { KnowledgePage } from '@/pages/KnowledgePage'
+import { DocumentPage } from '@/pages/DocumentPage'
+import { InferencePage } from '@/pages/InferencePage'
+import { MemoryPage } from '@/pages/MemoryPage'
 import { PluginsPage } from '@/pages/PluginsPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { RolesPage } from '@/pages/RolesPage'
@@ -55,6 +58,10 @@ export default function App() {
                   <Route path="assistants/:id"     element={<AssistantDetailPage />} />
                   {/* Knowledge & Documents */}
                   <Route path="knowledge"          element={<KnowledgePage />} />
+                  <Route path="documents"          element={<DocumentPage />} />
+                  {/* Inference & Memory */}
+                  <Route path="inference"          element={<InferencePage />} />
+                  <Route path="memory"             element={<MemoryPage />} />
                   {/* Models & Training */}
                   <Route path="models"             element={<ModelsPage />} />
                   <Route path="training"           element={<TrainingPage />} />
