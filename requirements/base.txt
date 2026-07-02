@@ -1,18 +1,41 @@
-# Aegis — base requirements (all installable from local wheelhouse)
-# Install: pip install --no-index --find-links wheelhouse/ -r base.txt
+# === AEGIS base requirements ===
+# Install offline: pip install --no-index --find-links=wheelhouse/ -r base.txt
 
-fastapi>=0.111.0,<1.0.0
-uvicorn[standard]>=0.29.0,<1.0.0
-pydantic>=2.7.0,<3.0.0
-pydantic-settings>=2.2.0,<3.0.0
-sqlmodel>=0.0.18,<1.0.0
-aiosqlite>=0.20.0,<1.0.0
-structlog>=24.1.0,<25.0.0
+# Core framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
 
-# Security (Phase 6)
-argon2-cffi>=23.1.0,<24.0.0
-PyJWT>=2.8.0,<3.0.0
-cryptography>=42.0.0,<43.0.0
+# Database
+sqlmodel>=0.0.18
+aiosqlite>=0.20.0
+sqlalchemy[asyncio]>=2.0.0
 
-# Analytics
-duckdb>=0.10.0,<1.0.0
+# HTTP (internal only — FastAPI/Uvicorn)
+httpx>=0.27.0
+
+# Logging
+structlog>=24.1.0
+
+# Security
+argon2-cffi>=23.1.0
+PyJWT>=2.8.0
+cryptography>=42.0.0
+
+# RAG / Vector store
+chromadb>=0.5.0
+
+# Document parsing
+pdfminer.six>=20221105
+python-docx>=1.1.0
+openpyxl>=3.1.0
+
+# Embeddings (sentence-transformers loads model from local path, local_files_only=True)
+# Requires: torch (CPU build), transformers, tokenizers
+# Download wheels offline and place in wheelhouse/
+# sentence-transformers>=2.7.0
+# torch>=2.3.0+cpu  # CPU-only build for air-gapped servers without GPU
+
+# Optional: numpy (pulled in by sentence-transformers / torch)
+numpy>=1.26.0

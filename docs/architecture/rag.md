@@ -1,119 +1,91 @@
-# Aegis — Document & RAG Engine (Phase 3)
+# Phase 3 — Document + RAG Engine
 
-## Pipeline Overview
+## Overview
+
+Phase 3 implements the full **Retrieve-Augment-Generate** pipeline, connecting the local document corpus to the Mamba SSM inference engine from Phase 1.
 
 ```
-File Upload / Raw Bytes
-    └─ DocumentParser        extract text (PDF/DOCX/TXT/MD/CSV)
-    └─ TextChunker           sliding-window, sentence-boundary aware
-    └─ LocalEmbedder         sentence-transformers (all-MiniLM-L6-v2 default)
-    └─ ChromaKnowledgeAdapter ChromaDB embedded → cosine similarity index
-    └─ DocumentModel (SQLite) metadata persistence
-
-RAG Query
-    └─ LocalEmbedder         embed query
-    └─ ChromaKnowledgeAdapter top-k vector search
-    └─ RAGService             context assembly + prompt augmentation
-    └─ IInferencePort         SSM forward pass (Mamba)
-    └─ RAGResponse            { answer, sources[], model_id, tokens }
+┌─────────────────────────────────────────────────────────────────┐
+│                        Document + RAG Engine                    │
+│                                                                 │
+│  Upload/ingest                                                  │
+│  ───────────►  Parser (PDF/DOCX/XLSX/HTML/JSON/text)            │
+│               ──────────►  TextChunker (recursive split)        │
+│                            ──────────►  Embedder (local ST)     │
+│                                         ──────────►  ChromaDB  │
+│                                                     (vectors)  │
+│                                                     SQLite      │
+│                                                     (metadata) │
+│                                                                 │
+│  RAG Query                                                      │
+│  ──────────►  Embed question  ──►  ChromaDB (top-k retrieval)  │
+│                                    ──────────►  Build prompt    │
+│                                                ──────────►      │
+│                                                Mamba SSM        │
+│                                                (generate)       │
+│                                                   ──────────►  │
+│                                                   Answer +      │
+│                                                   Sources       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Why ChromaDB?
+## Components
 
-| Property | ChromaDB Embedded | FAISS | LanceDB |
-|---|---|---|---|
-| Server required | No | No | No |
-| Persistence | Yes (local dir) | Manual | Yes |
-| Metadata filtering | Yes | No | Yes |
-| Air-gapped | Yes | Yes | Yes |
-| Python native | Yes | C++ binding | Yes |
-| Telemetry | Disabled (`anonymized_telemetry=False`) | N/A | N/A |
+| File | Responsibility |
+|---|---|
+| `parsers.py` | Format-specific text extraction (PDF, DOCX, XLSX, HTML, JSON, plain text) |
+| `chunker.py` | Recursive character splitter with configurable size + overlap |
+| `embedder.py` | `SentenceTransformerEmbedder` (local) + `FallbackHashEmbedder` (no-ML CI) |
+| `vector_store.py` | ChromaDB embedded persistent store, cosine similarity |
+| `db_store.py` | SQLite/SQLModel metadata store (async) |
+| `document_service.py` | `IDocumentPort` implementation — orchestrates ingest pipeline |
+| `knowledge_service.py` | `IKnowledgePort` implementation — semantic search |
+| `rag_pipeline.py` | RAG orchestrator: retrieve → augment → generate (streaming + batch) |
+| `container.py` | DI factory: `build_document_container()` |
 
-## Component Details
-
-### DocumentParser
-Formats supported out of the box:
-- **PDF**: `pdfminer.six` — pure Python, no C dependencies
-- **DOCX**: `python-docx`
-- **TXT / MD / CSV / HTML**: direct UTF-8 decode
-- **Fallback**: raw bytes → UTF-8 with error replacement
-
-Detection order: magic bytes (PDF: `%PDF`, DOCX: `PK\x03\x04`) → file extension.
-
-### TextChunker
-Sliding-window algorithm with sentence-boundary detection:
-- `chunk_size=512` chars (default)
-- `chunk_overlap=64` chars — context continuity across chunks
-- Hard-splits sentences longer than `chunk_size`
-- Short fragments (< `min_chunk_len`) are dropped
-
-### LocalEmbedder
-Model: `all-MiniLM-L6-v2` (384 dim, ~22 MB, Apache-2.0 licence).
-
-To pre-download for offline use (run once on an internet-connected machine):
-```bash
-python -m backend.infrastructure.rag.embedder all-MiniLM-L6-v2 --out models/embed
-```
-Then copy `models/embed/all-MiniLM-L6-v2/` to the air-gapped machine.
-
-Environment variables set automatically:
-```
-HF_HUB_OFFLINE=1
-TRANSFORMERS_OFFLINE=1
-```
-No automatic download ever happens.
-
-### ChromaKnowledgeAdapter
-- `PersistentClient` → data in `data/chroma/` (local directory)
-- `anonymized_telemetry=False` → zero data egress
-- One collection per knowledge base (configurable `collection_name`)
-- Cosine similarity (`hnsw:space: cosine`)
-- Metadata `where` filters forwarded to ChromaDB query
-
-### RAGService
-Prompt template:
-```
-You are Aegis, a helpful AI assistant.
-Answer the user's question using ONLY the provided context.
-
-=== CONTEXT ===
-[1] <chunk 1 text>
-[2] <chunk 2 text>
-...
-=== END CONTEXT ===
-
-Question: <user query>
-
-Answer:
-```
-Context truncated to `max_context_chars=4096` (configurable).
-
-## API Reference
+## REST API (`/api/v1/documents`)
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/documents/upload` | Upload + ingest file |
-| `GET` | `/api/v1/documents` | List ingested documents |
-| `DELETE` | `/api/v1/documents/{id}` | Delete doc + vectors |
-| `POST` | `/api/v1/documents/search` | RAG query (retrieve + generate) |
-| `POST` | `/api/v1/knowledge/ingest` | Ingest raw text docs |
-| `GET` | `/api/v1/knowledge/documents` | List vector store docs |
-| `DELETE` | `/api/v1/knowledge/documents/{id}` | Delete from vector store |
-| `POST` | `/api/v1/knowledge/search` | Vector similarity search only |
+| `POST` | `/upload` | Upload + ingest a file |
+| `GET` | `/` | List all documents (paginated) |
+| `GET` | `/{id}` | Get document by ID |
+| `DELETE` | `/{id}` | Delete document (DB + vectors) |
+| `POST` | `/search` | Semantic search (embedding-based) |
+| `POST` | `/rag/query` | RAG answer (batch) |
+| `POST` | `/rag/stream` | RAG answer (SSE streaming) |
 
-## Adding a Custom Embed Model
+## Supported Formats
 
-1. Download model locally: `sentence-transformers` compatible
-2. Place in `models/embed/<model-name>/`
-3. Set `EMBED_MODEL=<model-name>` in `.env`
-4. Restart Aegis
+| Format | Parser | Notes |
+|---|---|---|
+| `.pdf` | pdfminer.six | Pure Python, no binary deps |
+| `.docx` | python-docx | Extracts paragraphs |
+| `.xlsx` | openpyxl | All sheets, tab-separated |
+| `.html` | stdlib HTMLParser | Strips scripts/styles |
+| `.json` | stdlib json | Pretty-prints for readability |
+| `.txt/.md/.rst/.csv` | PlainTextParser | UTF-8/Latin-1/CP1252 |
+| `.py/.js/.ts/.go/.rs` | PlainTextParser | Source code |
 
-## Requirements
+## Embedding Models (Offline)
 
-Add to `requirements/base.txt`:
+Copy a sentence-transformers model to `models/embeddings/<name>/` before first run:
+
+```bash
+# Example: all-MiniLM-L6-v2 (22 MB, 384 dims)
+cp -r /media/usb/all-MiniLM-L6-v2 ./models/embeddings/
 ```
-pdfminer.six>=20221105
-python-docx>=1.1
-chromadb>=0.5
-sentence-transformers>=3.0
+
+Set in `.env`:
 ```
+EMBEDDING_MODEL_PATH=./models/embeddings/all-MiniLM-L6-v2
+```
+
+If no model is configured, the `FallbackHashEmbedder` is used automatically (for development/CI; not suitable for production retrieval quality).
+
+## Air-Gap Compliance
+
+- `SentenceTransformer(..., local_files_only=True)` — prevents any HTTP call
+- ChromaDB in `PersistentClient` mode — no external server
+- All document data stays in `data/chroma/` and `data/aegis.db`
+- No telemetry, no analytics, no network access
