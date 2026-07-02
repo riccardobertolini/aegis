@@ -1,11 +1,23 @@
-"""Central router registration."""
+"""Central router registry — imports and mounts all sub-routers."""
 from fastapi import FastAPI
 
 
 def register_routers(app: FastAPI) -> None:
-    """Register all API routers. Implemented per-phase."""
-    # Routers will be registered here as engines are implemented.
-    # Example:
-    # from backend.api.v1 import inference, knowledge, memory
-    # app.include_router(inference.router, prefix="/api/v1/inference")
-    pass
+    from backend.api.inference_router import router as inference_router
+
+    app.include_router(
+        inference_router,
+        prefix="/api/v1/inference",
+        tags=["inference"],
+    )
+
+    # Security router (Phase 6) — mount if available
+    try:
+        from backend.api.security_router import router as security_router  # type: ignore
+        app.include_router(
+            security_router,
+            prefix="/api/v1/security",
+            tags=["security"],
+        )
+    except ImportError:
+        pass
