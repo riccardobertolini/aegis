@@ -1,4 +1,8 @@
-"""Text preprocessor — tokenisation + batching for SSM training."""
+"""Preprocessing: tokenization + chunking for SSM training.
+
+Produces fixed-length token-id tensors ready for DataLoader.
+Works with any tokenizer that exposes .encode(text) → ids.
+"""
 from __future__ import annotations
 
 import logging
@@ -7,39 +11,62 @@ from typing import Any, Iterator
 logger = logging.getLogger(__name__)
 
 
-class TextPreprocessor:
-    """
-    Converts raw text samples to token-id tensors for SSM/Mamba training.
-    Works with any tokenizer that exposes `.encode(text).ids`.
-    Falls back to UTF-8 byte encoding when no tokenizer is available.
+class Preprocessor:
+    """Tokenise and pack text samples into fixed-length chunks.
+
+    Parameters
+    ----------
+    tokenizer:
+        Any object with ``encode(text)`` returning an object whose ``.ids``
+        attribute is a list[int].  Compatible with HuggingFace tokenizers and
+        the ``_ByteLevelFallbackTokenizer`` in inference/loader.py.
+    max_length:
+        Token window size fed to the SSM (default 512 for CPU; up to 2048 GPU).
+    stride:
+        Sliding-window overlap in tokens (default = max_length // 2).
     """
 
-    def __init__(self, tokenizer: Any, max_seq_len: int = 512) -> None:
+    def __init__(
+        self,
+        tokenizer: Any,
+        max_length: int = 512,
+        stride: int | None = None,
+    ) -> None:
         self._tok = tokenizer
-        self._max_seq_len = max_seq_len
+        self._max_length = max_length
+        self._stride = stride if stride is not None else max_length // 2
 
-    def tokenize(self, texts: list[str]) -> list[list[int]]:
-        result: list[list[int]] = []
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def process_samples(
+        self,
+        texts: Iterator[str],
+    ) -> list[list[int]]:
+        """Tokenise all texts and return list of fixed-length chunks."""
+        buffer: list[int] = []
+        chunks: list[list[int]] = []
+
         for text in texts:
             ids = self._encode(text)
-            # sliding-window chunking with 50% overlap
-            if len(ids) <= self._max_seq_len:
-                result.append(ids)
-            else:
-                step = self._max_seq_len // 2
-                for start in range(0, len(ids) - self._max_seq_len + 1, step):
-                    result.append(ids[start : start + self._max_seq_len])
-                # last partial chunk
-                tail = ids[-(self._max_seq_len):]
-                if tail not in result:
-                    result.append(tail)
-        return result
+            buffer.extend(ids)
+            while len(buffer) >= self._max_length:
+                chunks.append(buffer[: self._max_length])
+                buffer = buffer[self._stride :]
 
-    def make_batches(
-        self, token_sequences: list[list[int]], batch_size: int
-    ) -> Iterator[list[list[int]]]:
-        for i in range(0, len(token_sequences), batch_size):
-            yield token_sequences[i : i + batch_size]
+        # tail (pad if needed)
+        if buffer:
+            tail = buffer[: self._max_length]
+            if len(tail) < self._max_length:
+                tail = tail + [0] * (self._max_length - len(tail))
+            chunks.append(tail)
+
+        logger.info(
+            "Preprocessor: %d chunks (max_length=%d, stride=%d)",
+            len(chunks), self._max_length, self._stride,
+        )
+        return chunks
 
     # ------------------------------------------------------------------
     # Private
@@ -49,5 +76,6 @@ class TextPreprocessor:
         try:
             enc = self._tok.encode(text)
             return enc.ids if hasattr(enc, "ids") else list(enc)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Tokenisation error (%s) — falling back to byte encoding", exc)
             return list(text.encode("utf-8"))

@@ -1,11 +1,16 @@
-"""Dataset manager — local JSONL/TXT datasets with versioning."""
+"""Dataset manager: local JSONL/CSV/TXT ingestion, versioning, preprocessing.
+
+No network calls. All data stays in datasets/ directory.
+"""
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import logging
-import random
+import shutil
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
@@ -13,144 +18,216 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class DatasetInfo:
-    name: str
+class DatasetVersion:
+    version_id: str
+    dataset_name: str
     path: Path
     num_samples: int
-    sha256: str
-    format: str  # "jsonl" | "txt"
-    split: str   # "train" | "val" | "test"
+    checksum: str
+    created_at: str
+    format: str  # "jsonl" | "csv" | "txt"
+    split: str   # "train" | "eval" | "test"
+    meta: dict = field(default_factory=dict)
 
-
-@dataclass
-class DatasetSplit:
-    train: list[str]
-    val: list[str]
-    test: list[str]
+    def to_dict(self) -> dict:
+        return {
+            "version_id": self.version_id,
+            "dataset_name": self.dataset_name,
+            "path": str(self.path),
+            "num_samples": self.num_samples,
+            "checksum": self.checksum,
+            "created_at": self.created_at,
+            "format": self.format,
+            "split": self.split,
+            "meta": self.meta,
+        }
 
 
 class DatasetManager:
+    """Manages local training datasets with versioning.
+
+    Layout::
+
+        datasets/
+            my-dataset/
+                v1/
+                    train.jsonl
+                    eval.jsonl
+                    meta.json
+                v2/
+                    ...
     """
-    Manages local datasets stored as JSONL or plain TXT files.
 
-    JSONL format (one JSON per line)::
-
-        {"text": "..."}
-        {"text": "...", "label": "..."}
-
-    TXT format: one sample per line (non-empty lines).
-
-    Versioning: sha256 of the file content is stored in a sidecar
-    <dataset>.sha256 file next to the data file.
-    """
-
-    def __init__(self, datasets_root: Path) -> None:
-        self._root = datasets_root
+    def __init__(self, datasets_root: str | Path) -> None:
+        self._root = Path(datasets_root)
         self._root.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    # Discovery
+    # Ingest
     # ------------------------------------------------------------------
 
-    def list_datasets(self) -> list[DatasetInfo]:
-        infos: list[DatasetInfo] = []
-        for p in sorted(self._root.rglob("*.jsonl")):
-            infos.append(self._stat(p, "jsonl"))
-        for p in sorted(self._root.rglob("*.txt")):
-            if not p.name.endswith(".sha256"):
-                infos.append(self._stat(p, "txt"))
-        return infos
-
-    # ------------------------------------------------------------------
-    # Load
-    # ------------------------------------------------------------------
-
-    def load_texts(self, path: str | Path) -> list[str]:
-        p = Path(path)
-        if not p.exists():
-            raise FileNotFoundError(f"Dataset not found: {p}")
-        if p.suffix == ".jsonl":
-            return self._load_jsonl(p)
-        return self._load_txt(p)
-
-    def split(
+    def ingest(
         self,
-        texts: list[str],
-        val_ratio: float = 0.1,
-        test_ratio: float = 0.05,
-        seed: int = 42,
-    ) -> DatasetSplit:
-        rng = random.Random(seed)
-        data = texts[:]
-        rng.shuffle(data)
-        n = len(data)
-        n_test = max(1, int(n * test_ratio))
-        n_val = max(1, int(n * val_ratio))
-        return DatasetSplit(
-            test=data[:n_test],
-            val=data[n_test : n_test + n_val],
-            train=data[n_test + n_val :],
+        name: str,
+        source_path: str | Path,
+        split: str = "train",
+        meta: dict | None = None,
+    ) -> DatasetVersion:
+        """Copy source file into versioned dataset directory."""
+        src = Path(source_path)
+        if not src.exists():
+            raise FileNotFoundError(f"Source dataset not found: {src}")
+
+        fmt = self._detect_format(src)
+        version_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        version_dir = self._root / name / version_id
+        version_dir.mkdir(parents=True, exist_ok=True)
+
+        dest = version_dir / f"{split}.{fmt}"
+        shutil.copy2(src, dest)
+
+        checksum = self._sha256(dest)
+        samples = self._count_samples(dest, fmt)
+
+        dv = DatasetVersion(
+            version_id=version_id,
+            dataset_name=name,
+            path=dest,
+            num_samples=samples,
+            checksum=checksum,
+            created_at=version_id,
+            format=fmt,
+            split=split,
+            meta=meta or {},
         )
+        # Persist metadata
+        meta_path = version_dir / "meta.json"
+        existing: list[dict] = []
+        if meta_path.exists():
+            with open(meta_path) as f:
+                existing = json.load(f)
+        existing.append(dv.to_dict())
+        with open(meta_path, "w") as f:
+            json.dump(existing, f, indent=2)
+
+        logger.info("Dataset '%s' v%s ingested — %d samples", name, version_id, samples)
+        return dv
 
     # ------------------------------------------------------------------
-    # Versioning
+    # Query
     # ------------------------------------------------------------------
 
-    def compute_sha256(self, path: str | Path) -> str:
-        p = Path(path)
+    def list_datasets(self) -> list[str]:
+        if not self._root.exists():
+            return []
+        return [d.name for d in sorted(self._root.iterdir()) if d.is_dir()]
+
+    def list_versions(self, name: str) -> list[DatasetVersion]:
+        dataset_dir = self._root / name
+        if not dataset_dir.exists():
+            return []
+        versions: list[DatasetVersion] = []
+        for v_dir in sorted(dataset_dir.iterdir()):
+            meta_path = v_dir / "meta.json"
+            if not meta_path.exists():
+                continue
+            with open(meta_path) as f:
+                entries = json.load(f)
+            for e in entries:
+                versions.append(DatasetVersion(
+                    version_id=e["version_id"],
+                    dataset_name=e["dataset_name"],
+                    path=Path(e["path"]),
+                    num_samples=e["num_samples"],
+                    checksum=e["checksum"],
+                    created_at=e["created_at"],
+                    format=e["format"],
+                    split=e["split"],
+                    meta=e.get("meta", {}),
+                ))
+        return versions
+
+    def get_latest_version(self, name: str, split: str = "train") -> DatasetVersion | None:
+        versions = [v for v in self.list_versions(name) if v.split == split]
+        return versions[-1] if versions else None
+
+    def delete_version(self, name: str, version_id: str) -> None:
+        version_dir = self._root / name / version_id
+        if version_dir.exists():
+            shutil.rmtree(version_dir)
+            logger.info("Deleted dataset '%s' version '%s'", name, version_id)
+
+    # ------------------------------------------------------------------
+    # Iteration
+    # ------------------------------------------------------------------
+
+    def iter_samples(
+        self,
+        version: DatasetVersion,
+        text_field: str = "text",
+    ) -> Iterator[str]:
+        """Yield text strings from dataset file."""
+        if version.format == "jsonl":
+            yield from self._iter_jsonl(version.path, text_field)
+        elif version.format == "csv":
+            yield from self._iter_csv(version.path, text_field)
+        else:
+            yield from self._iter_txt(version.path)
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _detect_format(path: Path) -> str:
+        suffix = path.suffix.lower().lstrip(".")
+        if suffix in ("jsonl", "json"):
+            return "jsonl"
+        if suffix == "csv":
+            return "csv"
+        return "txt"
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
         h = hashlib.sha256()
-        with open(p, "rb") as f:
+        with open(path, "rb") as f:
             for chunk in iter(lambda: f.read(1 << 20), b""):
                 h.update(chunk)
-        digest = h.hexdigest()
-        sidecar = p.with_suffix(p.suffix + ".sha256")
-        sidecar.write_text(digest)
-        return digest
+        return h.hexdigest()
 
-    def verify_sha256(self, path: str | Path) -> bool:
-        p = Path(path)
-        sidecar = p.with_suffix(p.suffix + ".sha256")
-        if not sidecar.exists():
-            return False
-        expected = sidecar.read_text().strip()
-        return self.compute_sha256(p) == expected
+    @staticmethod
+    def _count_samples(path: Path, fmt: str) -> int:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            lines = [l for l in f if l.strip()]
+        return len(lines)
 
-    # ------------------------------------------------------------------
-    # Private
-    # ------------------------------------------------------------------
-
-    def _load_jsonl(self, path: Path) -> list[str]:
-        texts: list[str] = []
-        with open(path, encoding="utf-8") as f:
-            for i, line in enumerate(f):
+    @staticmethod
+    def _iter_jsonl(path: Path, text_field: str) -> Iterator[str]:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
                 line = line.strip()
                 if not line:
                     continue
                 try:
                     obj = json.loads(line)
-                    texts.append(obj.get("text") or obj.get("content") or str(obj))
+                    if isinstance(obj, dict):
+                        yield obj.get(text_field, "")
+                    else:
+                        yield str(obj)
                 except json.JSONDecodeError:
-                    logger.warning("Skipping malformed JSONL line %d in %s", i, path)
-        return texts
+                    yield line
 
-    def _load_txt(self, path: Path) -> list[str]:
-        with open(path, encoding="utf-8") as f:
-            return [line.rstrip("\n") for line in f if line.strip()]
+    @staticmethod
+    def _iter_csv(path: Path, text_field: str) -> Iterator[str]:
+        with open(path, newline="", encoding="utf-8", errors="replace") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                yield row.get(text_field, " ".join(row.values()))
 
-    def _stat(self, path: Path, fmt: str) -> DatasetInfo:
-        texts = self.load_texts(path)
-        sidecar = path.with_suffix(path.suffix + ".sha256")
-        sha = sidecar.read_text().strip() if sidecar.exists() else self.compute_sha256(path)
-        split_name = "train"
-        for part in ("val", "valid", "test", "dev"):
-            if part in path.stem.lower():
-                split_name = part
-                break
-        return DatasetInfo(
-            name=path.stem,
-            path=path,
-            num_samples=len(texts),
-            sha256=sha,
-            format=fmt,
-            split=split_name,
-        )
+    @staticmethod
+    def _iter_txt(path: Path) -> Iterator[str]:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    yield line
