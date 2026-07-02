@@ -1,20 +1,23 @@
-import { type LucideIcon } from 'lucide-react'
-import styles from './EmptyState.module.css'
+import React from 'react'
+import { Button } from './Button'
 
 interface Props {
-  icon: LucideIcon
+  icon?: string
   title: string
-  description: string
-  action?: React.ReactNode
+  description?: string
+  actionLabel?: string
+  onAction?: () => void
 }
 
-export function EmptyState({ icon: Icon, title, description, action }: Props) {
+export function EmptyState({ icon = '📭', title, description, actionLabel, onAction }: Props) {
   return (
-    <div className={styles.empty}>
-      <div className={styles.icon}><Icon size={40} /></div>
-      <h3 className={styles.title}>{title}</h3>
-      <p className={styles.desc}>{description}</p>
-      {action && <div className={styles.action}>{action}</div>}
+    <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--color-text-muted)' }}>
+      <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>{icon}</div>
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{title}</h3>
+      {description && <p style={{ maxWidth: '36ch', margin: '0 auto 1.25rem' }}>{description}</p>}
+      {actionLabel && onAction && (
+        <Button onClick={onAction}>{actionLabel}</Button>
+      )}
     </div>
   )
 }

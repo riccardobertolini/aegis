@@ -1,47 +1,45 @@
-import { type ReactNode, useEffect } from 'react'
+import React from 'react'
 
-interface ModalProps {
+interface Props {
   open: boolean
   onClose: () => void
   title: string
-  children: ReactNode
-  footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  children: React.ReactNode
+  footer?: React.ReactNode
+  width?: number
 }
 
-export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [open, onClose])
-
+export function Modal({ open, onClose, title, children, footer, width = 480 }: Props) {
   if (!open) return null
-
-  const maxWidths = { sm: 400, md: 560, lg: 720 }
-
   return (
     <div
-      className="modal-backdrop"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
     >
-      <div className="modal" style={{ maxWidth: maxWidths[size] }}>
-        <div className="modal-header">
-          <h2 id="modal-title" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>
-            {title}
-          </h2>
-          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close modal">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M18 6 6 18 M6 6l12 12" />
-            </svg>
-          </button>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-xl)',
+          width: '100%', maxWidth: width,
+          boxShadow: 'var(--shadow-lg)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-divider)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--color-text-muted)' }}>✕</button>
         </div>
-        <div className="modal-body">{children}</div>
-        {footer && <div className="modal-footer">{footer}</div>}
+        <div style={{ padding: '1.5rem' }}>{children}</div>
+        {footer && (
+          <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-divider)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )
