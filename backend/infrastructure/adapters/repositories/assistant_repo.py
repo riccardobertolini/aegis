@@ -6,21 +6,32 @@ from typing import List, Optional
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from backend.domain.models import Assistant
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
+from backend.infrastructure.database.models import AssistantModel
 
 
-class AssistantRepository(BaseSQLiteRepository[Assistant]):
-    model = Assistant
+class SQLiteAssistantRepository(BaseSQLiteRepository[AssistantModel]):
+    model = AssistantModel
 
-    async def find_by_name(self, name: str, session: AsyncSession) -> Optional[Assistant]:
-        result = await session.exec(select(Assistant).where(Assistant.name == name))
+    async def find_by_owner(self, owner_id: str) -> List[AssistantModel]:
+        result = await self._session.exec(
+            select(AssistantModel).where(AssistantModel.owner_id == owner_id)
+        )
+        return list(result.all())
+
+    async def find_active_by_owner(self, owner_id: str) -> List[AssistantModel]:
+        result = await self._session.exec(
+            select(AssistantModel)
+            .where(AssistantModel.owner_id == owner_id, AssistantModel.is_active == True)  # noqa: E712
+        )
+        return list(result.all())
+
+    async def find_by_name(self, name: str, owner_id: str) -> Optional[AssistantModel]:
+        result = await self._session.exec(
+            select(AssistantModel)
+            .where(AssistantModel.name == name, AssistantModel.owner_id == owner_id)
+        )
         return result.first()
 
-    async def find_active(self, session: AsyncSession) -> List[Assistant]:
-        result = await session.exec(select(Assistant).where(Assistant.is_active == True))  # noqa: E712
-        return list(result.all())
 
-    async def find_by_owner(self, owner_id: str, session: AsyncSession) -> List[Assistant]:
-        result = await session.exec(select(Assistant).where(Assistant.owner_id == owner_id))
-        return list(result.all())
+AssistantRepository = SQLiteAssistantRepository

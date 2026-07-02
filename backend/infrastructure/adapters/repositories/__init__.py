@@ -1,38 +1,40 @@
-"""Repository implementations — all concrete SQLite adapters."""
-from backend.infrastructure.adapters.repositories.assistant_repo import AssistantRepository
-from backend.infrastructure.adapters.repositories.audit_repo import AuditLogRepository
-from backend.infrastructure.adapters.repositories.backup_repo import BackupRepository
-from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
-from backend.infrastructure.adapters.repositories.dataset_repo import DatasetRepository
-from backend.infrastructure.adapters.repositories.document_repo import DocumentRepository
-from backend.infrastructure.adapters.repositories.knowledge_repo import (
-    CategoryRepository,
-    KnowledgeBaseRepository,
+"""Repository package — re-exports all SQLite repository classes."""
+from backend.infrastructure.adapters.repositories.assistant_repo import SQLiteAssistantRepository, AssistantRepository
+from backend.infrastructure.adapters.repositories.audit_repo import SQLiteAuditLogRepository, AuditLogRepository
+from backend.infrastructure.adapters.repositories.backup_repo import SQLiteBackupRepository, BackupRepository
+from backend.infrastructure.adapters.repositories.document_repo import (
+    SQLiteDocumentRepository, DocumentRepository,
+    SQLiteCategoryRepository, CategoryRepository,
+    SQLiteKnowledgeBaseRepository, KnowledgeBaseRepository,
 )
-from backend.infrastructure.adapters.repositories.memory_repo import MemoryRepository
-from backend.infrastructure.adapters.repositories.model_repo import ModelRepository
-from backend.infrastructure.adapters.repositories.role_repo import (
-    PermissionRepository,
-    RoleRepository,
+from backend.infrastructure.adapters.repositories.memory_repo import SQLiteMemoryEntryRepository, MemoryEntryRepository
+from backend.infrastructure.adapters.repositories.model_repo import (
+    SQLiteModelRecordRepository, ModelRecordRepository,
+    SQLiteDatasetRepository, DatasetRepository,
 )
-from backend.infrastructure.adapters.repositories.user_repo import UserRepository
-from backend.infrastructure.adapters.repositories.version_repo import VersionRepository
-from backend.infrastructure.adapters.repositories.workflow_repo import WorkflowRepository
+from backend.infrastructure.adapters.repositories.user_repo import (
+    SQLiteUserRepository, UserRepository,
+    SQLiteRoleRepository, RoleRepository,
+    SQLitePermissionRepository, PermissionRepository,
+)
+from backend.infrastructure.adapters.repositories.workflow_repo import (
+    SQLiteWorkflowRepository, WorkflowRepository,
+    SQLiteRuleRepository, RuleRepository,
+)
 
 __all__ = [
-    "AssistantRepository",
-    "AuditLogRepository",
-    "BackupRepository",
-    "BaseSQLiteRepository",
-    "CategoryRepository",
-    "DatasetRepository",
-    "DocumentRepository",
-    "KnowledgeBaseRepository",
-    "MemoryRepository",
-    "ModelRepository",
-    "PermissionRepository",
-    "RoleRepository",
-    "UserRepository",
-    "VersionRepository",
-    "WorkflowRepository",
+    "SQLiteAssistantRepository", "AssistantRepository",
+    "SQLiteAuditLogRepository", "AuditLogRepository",
+    "SQLiteBackupRepository", "BackupRepository",
+    "SQLiteDocumentRepository", "DocumentRepository",
+    "SQLiteCategoryRepository", "CategoryRepository",
+    "SQLiteKnowledgeBaseRepository", "KnowledgeBaseRepository",
+    "SQLiteMemoryEntryRepository", "MemoryEntryRepository",
+    "SQLiteModelRecordRepository", "ModelRecordRepository",
+    "SQLiteDatasetRepository", "DatasetRepository",
+    "SQLiteUserRepository", "UserRepository",
+    "SQLiteRoleRepository", "RoleRepository",
+    "SQLitePermissionRepository", "PermissionRepository",
+    "SQLiteWorkflowRepository", "WorkflowRepository",
+    "SQLiteRuleRepository", "RuleRepository",
 ]

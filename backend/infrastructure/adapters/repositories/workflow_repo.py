@@ -1,35 +1,51 @@
-"""SQLite repository for Workflow entities."""
+"""SQLite repositories for Workflow and Rule entities."""
 from __future__ import annotations
 
 from typing import List, Optional
-from uuid import UUID
 
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from backend.domain.models import Workflow
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
+from backend.infrastructure.database.models import RuleModel, WorkflowModel
 
 
-class WorkflowRepository(BaseSQLiteRepository[Workflow]):
-    model = Workflow
+class SQLiteWorkflowRepository(BaseSQLiteRepository[WorkflowModel]):
+    model = WorkflowModel
 
-    async def find_by_assistant(
-        self, assistant_id: UUID, session: AsyncSession
-    ) -> List[Workflow]:
-        result = await session.exec(
-            select(Workflow).where(Workflow.assistant_id == str(assistant_id))
+    async def find_by_owner(self, owner_id: str) -> List[WorkflowModel]:
+        result = await self._session.exec(
+            select(WorkflowModel).where(WorkflowModel.owner_id == owner_id)
         )
         return list(result.all())
 
-    async def find_active(self, session: AsyncSession) -> List[Workflow]:
-        result = await session.exec(
-            select(Workflow).where(Workflow.is_active == True)  # noqa: E712
+    async def find_by_status(self, status: str) -> List[WorkflowModel]:
+        result = await self._session.exec(
+            select(WorkflowModel).where(WorkflowModel.status == status)
         )
         return list(result.all())
 
-    async def find_by_name(
-        self, name: str, session: AsyncSession
-    ) -> Optional[Workflow]:
-        result = await session.exec(select(Workflow).where(Workflow.name == name))
-        return result.first()
+
+WorkflowRepository = SQLiteWorkflowRepository
+
+
+class SQLiteRuleRepository(BaseSQLiteRepository[RuleModel]):
+    model = RuleModel
+
+    async def find_active_by_resource(self, resource: str) -> List[RuleModel]:
+        result = await self._session.exec(
+            select(RuleModel)
+            .where(RuleModel.resource == resource, RuleModel.is_active == True)  # noqa: E712
+            .order_by(RuleModel.priority.desc())  # type: ignore[attr-defined]
+        )
+        return list(result.all())
+
+    async def find_active(self) -> List[RuleModel]:
+        result = await self._session.exec(
+            select(RuleModel)
+            .where(RuleModel.is_active == True)  # noqa: E712
+            .order_by(RuleModel.priority.desc())  # type: ignore[attr-defined]
+        )
+        return list(result.all())
+
+
+RuleRepository = SQLiteRuleRepository

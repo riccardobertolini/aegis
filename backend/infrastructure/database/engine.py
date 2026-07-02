@@ -1,62 +1,73 @@
-"""Async SQLite engine factory (aiosqlite + SQLModel)."""
+"""Async SQLite engine factory — canonical, air-gapped, zero server.
+
+Single source of truth for the async engine, session factory, and
+FastAPI dependency.  All other modules import from here.
+
+URL format:  sqlite+aiosqlite:///./data/aegis.db
+No remote connections, no cloud DB, no telemetry.
+"""
 from __future__ import annotations
 
-from pathlib import Path
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from functools import lru_cache
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from backend.shared.config import get_settings
 
-_engine = None
-_session_factory = None
 
-
-def _db_url() -> str:
+@lru_cache(maxsize=1)
+def get_engine() -> AsyncEngine:
+    """Singleton async engine — created once, reused for the lifetime of the process."""
     settings = get_settings()
-    db_path: Path = Path(settings.data_dir) / "aegis.db"
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    return f"sqlite+aiosqlite:///{db_path}"
+    return create_async_engine(
+        settings.database_url,
+        echo=settings.debug,
+        connect_args={"check_same_thread": False},
+        pool_pre_ping=True,
+    )
 
 
-async def get_engine():
-    global _engine
-    if _engine is None:
-        _engine = create_async_engine(
-            _db_url(),
-            echo=False,
-            connect_args={"check_same_thread": False},
-        )
-    return _engine
-
-
-async def get_session_factory():
-    global _session_factory
-    if _session_factory is None:
-        engine = await get_engine()
-        _session_factory = async_sessionmaker(
-            engine, class_=AsyncSession, expire_on_commit=False
-        )
-    return _session_factory
+@lru_cache(maxsize=1)
+def _session_factory() -> sessionmaker:  # type: ignore[type-arg]
+    return sessionmaker(
+        bind=get_engine(),
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    factory = await get_session_factory()
-    async with factory() as session:
+    """FastAPI dependency: yields one session per request, auto-committed on success."""
+    async with _session_factory()() as session:  # type: ignore[operator]
         yield session
 
 
+# Alias consumed by Fase 6 security layer
+get_async_session = get_session
+
+
 async def create_all_tables() -> None:
-    """Create all tables (used for tests and initial setup without Alembic)."""
-    engine = await get_engine()
+    """Bootstrap helper: create all SQLModel tables.
+
+    Used only for test fixtures and first-run setup.
+    Production runs use Alembic migrations (see infrastructure/migrations/).
+    """
+    # Import models so SQLModel.metadata is populated before create_all.
+    import backend.infrastructure.database.models  # noqa: F401
+
+    engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
-async def dispose_engine() -> None:
-    global _engine, _session_factory
-    if _engine:
-        await _engine.dispose()
-        _engine = None
-        _session_factory = None
+async def drop_all_tables() -> None:
+    """Test helper only — never call in production."""
+    import backend.infrastructure.database.models  # noqa: F401
+
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)

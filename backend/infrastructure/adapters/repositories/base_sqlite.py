@@ -1,9 +1,10 @@
 """BaseSQLiteRepository — generic async CRUD over SQLModel + aiosqlite.
 
-All repositories extend this base.  The session is always injected
-by the caller (FastAPI Depends or test fixture) — no hidden global state.
+All domain repositories extend this base.  The AsyncSession is always
+injected by the caller (FastAPI Depends or test fixture); no hidden
+global state, fully SOLID-compliant.
 
-No remote DB, no cloud storage.  Everything is local SQLite.
+Air-gapped: only local SQLite, no remote DB.
 """
 from __future__ import annotations
 
@@ -17,35 +18,43 @@ T = TypeVar("T", bound=SQLModel)
 
 
 class BaseSQLiteRepository(Generic[T]):
-    """Provides create / find_by_id / find_all / update / delete for any SQLModel."""
+    """Generic async CRUD: create / get / list / update / delete."""
 
     model: Type[T]
 
-    async def create(self, entity: T, session: AsyncSession) -> T:
-        session.add(entity)
-        await session.commit()
-        await session.refresh(entity)
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(self, entity: T) -> T:
+        self._session.add(entity)
+        await self._session.commit()
+        await self._session.refresh(entity)
         return entity
 
-    async def find_by_id(self, entity_id: str | UUID, session: AsyncSession) -> Optional[T]:
-        return await session.get(self.model, str(entity_id))
+    async def get(self, entity_id: str | UUID) -> Optional[T]:
+        return await self._session.get(self.model, str(entity_id))
 
-    async def find_all(
-        self, session: AsyncSession, limit: int = 100, offset: int = 0
-    ) -> List[T]:
-        result = await session.exec(select(self.model).offset(offset).limit(limit))
+    # Kept for backwards-compat with old callers that pass session explicitly
+    async def find_by_id(self, entity_id: str | UUID, session: AsyncSession | None = None) -> Optional[T]:
+        sess = session or self._session
+        return await sess.get(self.model, str(entity_id))
+
+    async def list(self, limit: int = 100, offset: int = 0) -> List[T]:
+        result = await self._session.exec(
+            select(self.model).offset(offset).limit(limit)
+        )
         return list(result.all())
 
-    async def update(self, entity: T, session: AsyncSession) -> T:
-        session.add(entity)
-        await session.commit()
-        await session.refresh(entity)
+    async def update(self, entity: T) -> T:
+        self._session.add(entity)
+        await self._session.commit()
+        await self._session.refresh(entity)
         return entity
 
-    async def delete(self, entity_id: str | UUID, session: AsyncSession) -> bool:
-        entity = await self.find_by_id(entity_id, session)
+    async def delete(self, entity_id: str | UUID) -> bool:
+        entity = await self.get(entity_id)
         if entity is None:
             return False
-        await session.delete(entity)
-        await session.commit()
+        await self._session.delete(entity)
+        await self._session.commit()
         return True

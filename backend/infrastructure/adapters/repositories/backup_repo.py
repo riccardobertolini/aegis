@@ -1,30 +1,38 @@
-"""SQLite repository for BackupRecord entities."""
+"""SQLite repository for Backup records."""
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from backend.domain.models import BackupRecord
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
+from backend.infrastructure.database.models import BackupModel
 
 
-class BackupRepository(BaseSQLiteRepository[BackupRecord]):
-    model = BackupRecord
+class SQLiteBackupRepository(BaseSQLiteRepository[BackupModel]):
+    model = BackupModel
 
-    async def find_by_type(
-        self, backup_type: str, session: AsyncSession
-    ) -> List[BackupRecord]:
-        result = await session.exec(
-            select(BackupRecord)
-            .where(BackupRecord.backup_type == backup_type)
-            .order_by(BackupRecord.created_at.desc())  # type: ignore[arg-type]
+    async def find_by_status(self, status: str) -> List[BackupModel]:
+        result = await self._session.exec(
+            select(BackupModel)
+            .where(BackupModel.status == status)
+            .order_by(BackupModel.created_at.desc())  # type: ignore[attr-defined]
         )
         return list(result.all())
 
-    async def find_latest(self, session: AsyncSession) -> BackupRecord | None:
-        result = await session.exec(
-            select(BackupRecord).order_by(BackupRecord.created_at.desc()).limit(1)  # type: ignore[arg-type]
+    async def find_latest(self, n: int = 10) -> List[BackupModel]:
+        result = await self._session.exec(
+            select(BackupModel)
+            .order_by(BackupModel.created_at.desc())  # type: ignore[attr-defined]
+            .limit(n)
+        )
+        return list(result.all())
+
+    async def find_by_label(self, label: str) -> Optional[BackupModel]:
+        result = await self._session.exec(
+            select(BackupModel).where(BackupModel.label == label)
         )
         return result.first()
+
+
+BackupRepository = SQLiteBackupRepository

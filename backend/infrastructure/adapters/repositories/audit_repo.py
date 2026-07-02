@@ -1,51 +1,61 @@
-"""SQLite repository for AuditLogEntry entities.
-
-Audit logs are append-only by convention: update() and delete()
-are intentionally unsupported at the application layer.
-"""
+"""SQLite repository for AuditLog entries (append-only WORM pattern)."""
 from __future__ import annotations
 
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from backend.domain.models import AuditLogEntry
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
+from backend.infrastructure.database.models import AuditLogModel
 
 
-class AuditLogRepository(BaseSQLiteRepository[AuditLogEntry]):
-    model = AuditLogEntry
+class SQLiteAuditLogRepository(BaseSQLiteRepository[AuditLogModel]):
+    model = AuditLogModel
 
-    async def find_by_actor(
-        self, actor_id: str, session: AsyncSession, limit: int = 200
-    ) -> List[AuditLogEntry]:
-        result = await session.exec(
-            select(AuditLogEntry)
-            .where(AuditLogEntry.actor_id == actor_id)
-            .order_by(AuditLogEntry.created_at.desc())  # type: ignore[arg-type]
-            .limit(limit)
-        )
-        return list(result.all())
+    # Audit logs are APPEND-ONLY: override delete/update to prevent misuse.
+    async def update(self, entity: AuditLogModel) -> AuditLogModel:  # type: ignore[override]
+        raise NotImplementedError("Audit log entries are immutable.")
 
-    async def find_by_action(
-        self, action: str, session: AsyncSession, limit: int = 200
-    ) -> List[AuditLogEntry]:
-        result = await session.exec(
-            select(AuditLogEntry)
-            .where(AuditLogEntry.action == action)
-            .order_by(AuditLogEntry.created_at.desc())  # type: ignore[arg-type]
+    async def delete(self, entity_id: str) -> bool:  # type: ignore[override]
+        raise NotImplementedError("Audit log entries cannot be deleted.")
+
+    async def find_by_actor(self, actor_id: str, limit: int = 200) -> List[AuditLogModel]:
+        result = await self._session.exec(
+            select(AuditLogModel)
+            .where(AuditLogModel.actor_id == actor_id)
+            .order_by(AuditLogModel.created_at.desc())  # type: ignore[attr-defined]
             .limit(limit)
         )
         return list(result.all())
 
     async def find_by_resource(
-        self, resource: str, session: AsyncSession, limit: int = 200
-    ) -> List[AuditLogEntry]:
-        result = await session.exec(
-            select(AuditLogEntry)
-            .where(AuditLogEntry.resource == resource)
-            .order_by(AuditLogEntry.created_at.desc())  # type: ignore[arg-type]
+        self, resource_type: str, resource_id: Optional[str] = None, limit: int = 200
+    ) -> List[AuditLogModel]:
+        stmt = (
+            select(AuditLogModel)
+            .where(AuditLogModel.resource_type == resource_type)
+            .order_by(AuditLogModel.created_at.desc())  # type: ignore[attr-defined]
+            .limit(limit)
+        )
+        if resource_id:
+            stmt = stmt.where(AuditLogModel.resource_id == resource_id)
+        result = await self._session.exec(stmt)
+        return list(result.all())
+
+    async def find_in_range(
+        self, since: datetime, until: datetime, limit: int = 1000
+    ) -> List[AuditLogModel]:
+        result = await self._session.exec(
+            select(AuditLogModel)
+            .where(
+                AuditLogModel.created_at >= since,
+                AuditLogModel.created_at <= until,
+            )
+            .order_by(AuditLogModel.created_at.asc())  # type: ignore[attr-defined]
             .limit(limit)
         )
         return list(result.all())
+
+
+AuditLogRepository = SQLiteAuditLogRepository

@@ -1,39 +1,88 @@
-"""SQLite repository for Document entities."""
+"""SQLite repositories for Document, Category, KnowledgeBase entities."""
 from __future__ import annotations
 
 from typing import List, Optional
-from uuid import UUID
 
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from backend.domain.models import Document
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
+from backend.infrastructure.database.models import (
+    CategoryModel,
+    DocumentModel,
+    KnowledgeBaseModel,
+)
 
 
-class DocumentRepository(BaseSQLiteRepository[Document]):
-    model = Document
+class SQLiteDocumentRepository(BaseSQLiteRepository[DocumentModel]):
+    model = DocumentModel
 
-    async def find_by_sha256(self, sha256: str, session: AsyncSession) -> Optional[Document]:
-        result = await session.exec(select(Document).where(Document.sha256 == sha256))
+    async def find_by_owner(self, owner_id: str) -> List[DocumentModel]:
+        result = await self._session.exec(
+            select(DocumentModel).where(DocumentModel.owner_id == owner_id)
+        )
+        return list(result.all())
+
+    async def find_by_status(self, status: str) -> List[DocumentModel]:
+        result = await self._session.exec(
+            select(DocumentModel).where(DocumentModel.status == status)
+        )
+        return list(result.all())
+
+    async def find_by_checksum(self, checksum: str) -> Optional[DocumentModel]:
+        result = await self._session.exec(
+            select(DocumentModel).where(DocumentModel.checksum_sha256 == checksum)
+        )
         return result.first()
 
-    async def find_by_knowledge_base(
-        self, knowledge_base_id: UUID, session: AsyncSession
-    ) -> List[Document]:
-        result = await session.exec(
-            select(Document).where(Document.knowledge_base_id == str(knowledge_base_id))
+
+DocumentRepository = SQLiteDocumentRepository
+
+
+class SQLiteCategoryRepository(BaseSQLiteRepository[CategoryModel]):
+    model = CategoryModel
+
+    async def find_by_name(self, name: str) -> Optional[CategoryModel]:
+        result = await self._session.exec(
+            select(CategoryModel).where(CategoryModel.name == name)
+        )
+        return result.first()
+
+    async def find_children(self, parent_id: str) -> List[CategoryModel]:
+        result = await self._session.exec(
+            select(CategoryModel).where(CategoryModel.parent_id == parent_id)
         )
         return list(result.all())
 
-    async def find_by_category(
-        self, category_id: UUID, session: AsyncSession
-    ) -> List[Document]:
-        result = await session.exec(
-            select(Document).where(Document.category_id == str(category_id))
+    async def find_roots(self) -> List[CategoryModel]:
+        result = await self._session.exec(
+            select(CategoryModel).where(CategoryModel.parent_id == None)  # noqa: E711
         )
         return list(result.all())
 
-    async def find_encrypted(self, session: AsyncSession) -> List[Document]:
-        result = await session.exec(select(Document).where(Document.is_encrypted == True))  # noqa: E712
+
+CategoryRepository = SQLiteCategoryRepository
+
+
+class SQLiteKnowledgeBaseRepository(BaseSQLiteRepository[KnowledgeBaseModel]):
+    model = KnowledgeBaseModel
+
+    async def find_by_owner(self, owner_id: str) -> List[KnowledgeBaseModel]:
+        result = await self._session.exec(
+            select(KnowledgeBaseModel).where(KnowledgeBaseModel.owner_id == owner_id)
+        )
         return list(result.all())
+
+    async def find_active(self) -> List[KnowledgeBaseModel]:
+        result = await self._session.exec(
+            select(KnowledgeBaseModel).where(KnowledgeBaseModel.is_active == True)  # noqa: E712
+        )
+        return list(result.all())
+
+    async def find_by_name(self, name: str) -> Optional[KnowledgeBaseModel]:
+        result = await self._session.exec(
+            select(KnowledgeBaseModel).where(KnowledgeBaseModel.name == name)
+        )
+        return result.first()
+
+
+KnowledgeBaseRepository = SQLiteKnowledgeBaseRepository
