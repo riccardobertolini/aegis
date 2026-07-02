@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "chat": "Chat",
+    "documents": "Documenti",
+    "history": "Cronologia",
+    "settings": "Impostazioni",
+    "logout": "Esci"
+  },
+  "login": {
+    "title": "Accedi",
+    "username": "Nome utente",
+    "password": "Password",
+    "submit": "Accedi",
+    "error": "Nome utente o password non validi"
+  },
+  "chat": {
+    "placeholder": "Chiedi qualcosa…",
+    "send": "Invia",
+    "empty": "Inizia una conversazione",
+    "thinking": "Sto elaborando…",
+    "error": "Impossibile raggiungere il motore AI. Verifica che il backend sia in esecuzione.",
+    "new": "Nuova conversazione"
+  },
+  "documents": {
+    "title": "Documenti",
+    "upload": "Carica documento",
+    "drop": "Trascina file qui o clicca per sfogliare",
+    "allowed": "PDF, TXT, MD, DOCX — max 50 MB",
+    "indexing": "Indicizzazione…",
+    "indexed": "Indicizzato",
+    "error": "Caricamento fallito",
+    "empty": "Nessun documento",
+    "delete": "Elimina",
+    "confirmDelete": "Eliminare questo documento?"
+  },
+  "history": {
+    "title": "Cronologia",
+    "empty": "Nessuna conversazione passata",
+    "delete": "Elimina",
+    "resume": "Riprendi"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "language": "Lingua",
+    "theme": "Tema",
+    "themeLight": "Chiaro",
+    "themeDark": "Scuro",
+    "themeSystem": "Sistema",
+    "changePassword": "Cambia password",
+    "currentPassword": "Password attuale",
+    "newPassword": "Nuova password",
+    "savePassword": "Salva",
+    "passwordChanged": "Password cambiata",
+    "passwordError": "Impossibile cambiare la password"
+  },
+  "common": {
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "loading": "Caricamento…",
+    "error": "Qualcosa è andato storto",
+    "save": "Salva"
+  }
+}

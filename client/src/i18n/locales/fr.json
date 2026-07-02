@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "chat": "Chat",
+    "documents": "Documents",
+    "history": "Historique",
+    "settings": "Paramètres",
+    "logout": "Déconnexion"
+  },
+  "login": {
+    "title": "Connexion",
+    "username": "Nom d’utilisateur",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "error": "Nom d’utilisateur ou mot de passe invalide"
+  },
+  "chat": {
+    "placeholder": "Posez une question…",
+    "send": "Envoyer",
+    "empty": "Démarrez une conversation",
+    "thinking": "Traitement en cours…",
+    "error": "Moteur IA inaccessible. Vérifiez que le backend est démarré.",
+    "new": "Nouvelle conversation"
+  },
+  "documents": {
+    "title": "Documents",
+    "upload": "Téléverser un document",
+    "drop": "Déposez des fichiers ici ou cliquez pour parcourir",
+    "allowed": "PDF, TXT, MD, DOCX — 50 Mo max",
+    "indexing": "Indexation…",
+    "indexed": "Indexé",
+    "error": "Envoi échoué",
+    "empty": "Aucun document",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer ce document ?"
+  },
+  "history": {
+    "title": "Historique",
+    "empty": "Aucune conversation passée",
+    "delete": "Supprimer",
+    "resume": "Reprendre"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeSystem": "Système",
+    "changePassword": "Changer le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "savePassword": "Enregistrer",
+    "passwordChanged": "Mot de passe modifié",
+    "passwordError": "Impossible de modifier le mot de passe"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "loading": "Chargement…",
+    "error": "Une erreur s’est produite",
+    "save": "Enregistrer"
+  }
+}

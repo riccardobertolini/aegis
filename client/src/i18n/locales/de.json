@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "chat": "Chat",
+    "documents": "Dokumente",
+    "history": "Verlauf",
+    "settings": "Einstellungen",
+    "logout": "Abmelden"
+  },
+  "login": {
+    "title": "Anmelden",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "error": "Ungültiger Benutzername oder Passwort"
+  },
+  "chat": {
+    "placeholder": "Etwas fragen…",
+    "send": "Senden",
+    "empty": "Gespräch beginnen",
+    "thinking": "Verarbeitung…",
+    "error": "KI-Engine nicht erreichbar. Prüfen Sie, ob das Backend läuft.",
+    "new": "Neues Gespräch"
+  },
+  "documents": {
+    "title": "Dokumente",
+    "upload": "Dokument hochladen",
+    "drop": "Dateien hier ablegen oder klicken",
+    "allowed": "PDF, TXT, MD, DOCX — max. 50 MB",
+    "indexing": "Indizierung…",
+    "indexed": "Indiziert",
+    "error": "Upload fehlgeschlagen",
+    "empty": "Keine Dokumente",
+    "delete": "Löschen",
+    "confirmDelete": "Dieses Dokument löschen?"
+  },
+  "history": {
+    "title": "Verlauf",
+    "empty": "Keine früheren Gespräche",
+    "delete": "Löschen",
+    "resume": "Fortsetzen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "theme": "Thema",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System",
+    "changePassword": "Passwort ändern",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "savePassword": "Speichern",
+    "passwordChanged": "Passwort geändert",
+    "passwordError": "Passwort konnte nicht geändert werden"
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "loading": "Laden…",
+    "error": "Etwas ist schiefgelaufen",
+    "save": "Speichern"
+  }
+}

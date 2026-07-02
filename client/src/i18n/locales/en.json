@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "chat": "Chat",
+    "documents": "Documents",
+    "history": "History",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "login": {
+    "title": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "error": "Invalid username or password"
+  },
+  "chat": {
+    "placeholder": "Ask something…",
+    "send": "Send",
+    "empty": "Start a conversation",
+    "thinking": "Thinking…",
+    "error": "Could not reach the AI engine. Check the backend is running.",
+    "new": "New conversation"
+  },
+  "documents": {
+    "title": "Documents",
+    "upload": "Upload document",
+    "drop": "Drop files here or click to browse",
+    "allowed": "PDF, TXT, MD, DOCX — max 50 MB",
+    "indexing": "Indexing…",
+    "indexed": "Indexed",
+    "error": "Upload failed",
+    "empty": "No documents yet",
+    "delete": "Delete",
+    "confirmDelete": "Delete this document?"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No past conversations",
+    "delete": "Delete",
+    "resume": "Resume"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "savePassword": "Save",
+    "passwordChanged": "Password changed",
+    "passwordError": "Failed to change password"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "save": "Save"
+  }
+}
