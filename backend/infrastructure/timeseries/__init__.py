@@ -1,0 +1,1 @@
+"""TimeSeries engine package (DuckDB)."""

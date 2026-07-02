@@ -1,25 +1,28 @@
-"""Port: Translation Engine (offline NMT)."""
+"""Port: Translation Engine."""
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
 class TranslationRequest:
     text: str
-    source_lang: str  # ISO 639-1, or "auto"
-    target_lang: str
+    source_lang: str  # ISO 639-1 e.g. "it"
+    target_lang: str  # ISO 639-1 e.g. "en"
+    metadata: dict = field(default_factory=dict)
 
 
 @dataclass
 class TranslationResult:
-    translated_text: str
+    text: str
     source_lang: str
     target_lang: str
-    confidence: float
+    error: Optional[str] = None
+    metadata: dict = field(default_factory=dict)
 
 
 class ITranslationPort(ABC):
-    """Contract for fully offline neural machine translation."""
+    """Contract for local offline translation."""
 
     @abstractmethod
     async def translate(self, request: TranslationRequest) -> TranslationResult: ...

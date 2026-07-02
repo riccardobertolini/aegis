@@ -1,0 +1,1 @@
+"""Log engine package (DuckDB)."""

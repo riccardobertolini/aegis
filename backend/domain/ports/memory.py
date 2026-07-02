@@ -1,16 +1,32 @@
 """Port: Memory Engine (conversation / session state)."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from enum import Enum
+
+
+class MemoryRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
 
 @dataclass
 class MemoryEntry:
     session_id: str
-    role: str  # "user" | "assistant" | "system"
+    role: MemoryRole
     content: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict = field(default_factory=dict)
+    intent: str | None = None
+
+
+@dataclass
+class SessionSummary:
+    session_id: str
+    summary: str
+    turn_count: int
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class IMemoryPort(ABC):
@@ -26,6 +42,10 @@ class IMemoryPort(ABC):
     async def clear_session(self, session_id: str) -> None: ...
 
     @abstractmethod
-    async def summarize_session(self, session_id: str) -> str:
-        """Produce a text summary of the session for long-term storage."""
-        ...
+    async def summarize_session(self, session_id: str) -> str: ...
+
+    @abstractmethod
+    async def list_sessions(self, page: int = 0, page_size: int = 20) -> list[str]: ...
+
+    @abstractmethod
+    async def get_summary(self, session_id: str) -> SessionSummary | None: ...

@@ -37,5 +37,11 @@ openpyxl>=3.1.0
 # sentence-transformers>=2.7.0
 # torch>=2.3.0+cpu  # CPU-only build for air-gapped servers without GPU
 
-# Optional: numpy (pulled in by sentence-transformers / torch)
+# Numerical
 numpy>=1.26.0
+
+# Analytics / TimeSeries / LogEngine
+duckdb>=0.10.0
+
+# Translation (offline, language packages pre-installed)
+# argostranslate>=1.9.0
