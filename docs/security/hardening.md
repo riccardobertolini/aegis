@@ -1,154 +1,188 @@
 # Aegis — Hardening Guide
 
-This guide documents OS-level and application-level hardening steps required for a
-production air-gapped deployment. All steps must be applied in addition to the
-application-layer controls implemented in Fase 6.
+> Deployment air-gapped. Nessun servizio cloud richiesto.
 
 ---
 
-## OS-Level Hardening
+## 1. OS Hardening (Linux)
 
-### 1. Disk Encryption
-```bash
-# LUKS2 full-disk encryption (Linux)
-cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 \
-  --hash sha256 /dev/sdX
-```
-- Mandatory prerequisite for protecting `keystore.bin` and `.env` at rest.
-- Without disk encryption, physical access = full compromise.
+### 1.1 Full-Disk Encryption (LUKS2) — OBBLIGATORIO
 
-### 2. Filesystem Permissions
 ```bash
-# Aegis data directory: owner-only read/write
-chmod 700 data/
-chmod 600 data/security/keystore.bin
-chmod 600 .env
-chmod 640 data/aegis.db
-chmod 750 models/
+# Durante installazione OS: cifrare la partizione dati
+cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 \
+  --key-size 512 --hash sha512 /dev/sdX
+
+# Aprire e montare
+cryptsetup luksOpen /dev/sdX aegis_crypt
+mkfs.ext4 /dev/mapper/aegis_crypt
+mount /dev/mapper/aegis_crypt /opt/aegis
 ```
 
-### 3. Process Isolation
+In alternativa, usare l'installer grafico di Ubuntu/Debian con opzione "Encrypt disk".
+
+### 1.2 Utente dedicato
+
 ```bash
-# Run as dedicated non-root user
-useradd --system --no-create-home --shell /usr/sbin/nologin aegis
-chown -R aegis:aegis /opt/aegis
+useradd -m -s /bin/bash -d /opt/aegis aegis
+chmod 750 /opt/aegis
+# Eseguire Uvicorn come utente aegis, non come root
+sudo -u aegis uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 4. Systemd Hardening (optional but recommended)
+### 1.3 Firewall host (iptables / ufw)
+
+```bash
+# Consentire solo loopback e porta 8000 da LAN se necessario
+ufw default deny incoming
+ufw allow from 127.0.0.1 to any port 8000
+# Se multi-utente LAN:
+# ufw allow from 192.168.1.0/24 to any port 8000
+ufw enable
+```
+
+### 1.4 Filesystem permissions
+
+```bash
+# .env mai leggibile da altri utenti
+chmod 600 /opt/aegis/.env
+chown aegis:aegis /opt/aegis/.env
+
+# Cartella modelli
+chmod 700 /opt/aegis/models
+chown aegis:aegis /opt/aegis/models
+
+# Keystore
+chmod 600 /opt/aegis/data/keystore.json
+```
+
+### 1.5 systemd service (hardened)
+
 ```ini
 # /etc/systemd/system/aegis.service
+[Unit]
+Description=Aegis AI Backend
+After=network.target
+
 [Service]
+Type=simple
 User=aegis
 Group=aegis
+WorkingDirectory=/opt/aegis
+ExecStart=/opt/aegis/.venv/bin/uvicorn backend.main:app \
+  --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+RestartSec=5
+
+# Hardening
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/aegis/data /opt/aegis/logs
+ReadWritePaths=/opt/aegis/data /opt/aegis/logs /opt/aegis/backups
 PrivateTmp=true
-CapabilityBoundingSet=
-AmbientCapabilities=
-RestrictSUIDSGID=true
-LockPersonality=true
-RestrictRealtime=true
-```
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
 
-### 5. Network Hardening
-```bash
-# Bind Uvicorn to localhost only (reverse proxy handles TLS if needed)
-uvicorn backend.main:app --host 127.0.0.1 --port 8000
-
-# iptables: block all outbound except localhost (air-gap enforcement)
-iptables -P OUTPUT DROP
-iptables -A OUTPUT -o lo -j ACCEPT
-iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+[Install]
+WantedBy=multi-user.target
 ```
 
 ---
 
-## Application Hardening
+## 2. Application Hardening
 
-### JWT Secret
-```bash
-# Generate a cryptographically strong secret
-python -c "import secrets; print(secrets.token_hex(32))"
-# Set in .env: JWT_SECRET_KEY=<output>
+### 2.1 JWT
+
+- Scadenza massima consigliata: **60 minuti** (default in `config.py`)
+- `jwt_secret_key` generato con `secrets.token_hex(32)` e conservato fuori dal repo
+- Rotazione chiave JWT: aggiorna `JWT_SECRET_KEY` in `.env` e riavvia
+- Ogni token include `jti` (UUID) verificato contro DB → revoca immediata possibile
+
+### 2.2 Password policy
+
+Minimo consigliato (configurabile in `SecuritySettings`):
+- Lunghezza ≥ 12 caratteri
+- Almeno 1 maiuscola, 1 minuscola, 1 cifra, 1 carattere speciale
+- Nessuna delle ultime 5 password riusata
+- Scadenza opzionale ogni 90 giorni
+
+### 2.3 Rate limiting
+
+Aggiungere `slowapi` o middleware custom su `/security/login`:
+
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@router.post("/login")
+@limiter.limit("5/minute")
+async def login(request: Request, ...):
+    ...
 ```
 
-### Password Policy
-Enforce at user creation time (Admin Studio UI should validate):
-- Minimum 12 characters
-- At least one uppercase, lowercase, digit, special character
-- No username in password
-- No common passwords (check against rockyou-100k locally)
+### 2.4 Keystore passphrase
 
-### First-Run Bootstrap
-```bash
-# After deployment, immediately change the default superadmin password
-curl -X POST http://localhost:8000/security/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username": "admin", "password": "ChangeMe123!"}'
-# Then update via the Admin Studio UI
-```
+- Minimo **20 caratteri**, mix di classi
+- Non nel file `.env` in testo chiaro in produzione: usare `systemd` `LoadCredential` o un secrets manager locale (Hashicorp Vault air-gapped)
+- Ruotare il keystore ogni 90 giorni con `POST /security/keys/rotate`
 
-### Key Rotation Schedule
-- Rotate encryption keys every 90 days (`POST /security/keys/rotate`)
-- Rotate JWT secret every 180 days (restart required, invalidates all sessions)
-- After rotation, re-encrypt any column-level encrypted data using the new key
+### 2.5 Backup
 
-### Session Hardening
-- Session duration: 60 minutes (configurable via `JWT_EXPIRY_MINUTES`)
-- Server-side session revocation available at any time
-- List and revoke sessions: `GET /security/sessions`
+- Backup `.aeb` su supporto separato (NAS cifrato, USB LUKS)
+- Test di restore mensile documentato
+- Passphrase backup separata da passphrase keystore
 
 ---
 
-## Secure Boot (Optional)
+## 3. Secure Boot (opzionale)
 
-For environments requiring hardware-rooted trust:
+Secure Boot garantisce che solo software firmato venga eseguito al boot.
 
-1. **Enable UEFI Secure Boot** on the host hardware.
-2. **TPM 2.0 seal** the LUKS key to PCR values (requires `systemd-cryptenroll`):
-   ```bash
-   systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=0+7 /dev/sdX
-   ```
-3. **IMA/EVM** (Integrity Measurement Architecture): measure all Python files at boot.
-   Configure in `/etc/ima/ima-policy`.
-4. **Application attestation**: on startup, Aegis can verify its own model hashes
-   before accepting inference requests. Use `POST /security/models/verify`.
+### Abilitare Secure Boot
+
+1. **BIOS/UEFI**: abilitare Secure Boot, impostare modalità "Custom"
+2. **Generare chiavi**: `openssl req -new -x509 -newkey rsa:2048 -keyout db.key -out db.crt -days 3650 -subj "/CN=Aegis Secure Boot/"`
+3. **Firmare bootloader**: `sbsign --key db.key --cert db.crt --output grubx64.efi.signed grubx64.efi`
+4. **Importare chiave in UEFI db**
+5. **Verificare**: `mokutil --sb-state` → `SecureBoot enabled`
+
+> ⚠️ Secure Boot non sostituisce LUKS2. Usare entrambi.
 
 ---
 
-## Backup Hardening
+## 4. Dependency Security
 
 ```bash
-# Create encrypted backup
-curl -X POST http://localhost:8000/security/backup/create \
-  -H 'Authorization: Bearer <token>' \
-  -H 'Content-Type: application/json' \
-  -d '{"source_path": "data", "dest_path": "data/backups"}'
+# Audit dipendenze (offline-compatible)
+pip install pip-audit
+pip-audit --local  # analizza solo pacchetti installati, no download
 
-# Verify backup integrity before offsite storage
-file data/backups/aegis_backup_*.aeb  # should show: data
+# Generare wheelhouse pinned con hash
+pip download -r requirements/base.txt -d wheelhouse/
+pip hash wheelhouse/*.whl > requirements/hashes.txt
 
-# Store backups on encrypted external media only
-# Never transmit backups over unencrypted channels
+# Installazione air-gapped verificata
+pip install --no-index --find-links wheelhouse/ \
+  --require-hashes -r requirements/hashes.txt
 ```
 
 ---
 
-## Audit Log Monitoring
+## 5. Checklist pre-produzione
 
-```bash
-# Verify audit chain integrity (should be run daily)
-# Via the AuditReader.verify_chain() method, callable from CLI:
-python -c "
-import asyncio
-from backend.infrastructure.security.audit import AuditReader
-# ... (wire up session and key)
-"
-
-# Watch for suspicious patterns:
-# - Multiple 'denied' outcomes for same actor_id
-# - 'auth.login' failures > 3 in 5 minutes
-# - Any 'admin:full' action outside business hours
-```
+- [ ] LUKS2 attivo e testato
+- [ ] Utente dedicato `aegis` non-root
+- [ ] `ufw` configurato
+- [ ] `.env` chmod 600
+- [ ] `JWT_SECRET_KEY` ≥ 32 byte random, fuori repo
+- [ ] Passphrase keystore ≥ 20 char, fuori `.env`
+- [ ] Audit chain verificata: `POST /security/audit/verify`
+- [ ] Hash modelli registrati: `POST /security/models/register`
+- [ ] Backup test-restore completato
+- [ ] `systemd` service con hardening attivo
+- [ ] Log rotation configurato

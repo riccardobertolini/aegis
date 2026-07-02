@@ -1,105 +1,113 @@
-# Aegis — Threat Model & Risk Assessment
+# Aegis — Threat Model
 
-## Scope
-
-This document covers the **Aegis AI Platform** (Admin Studio + Client) running in an **air-gapped, offline-first** enterprise environment. No network connectivity to external services is assumed or permitted.
-
----
-
-## System Boundaries
-
-```
-┌──────────────────────────────────────────────────────────┐
-│  AIR-GAP BOUNDARY                                        │
-│                                                          │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐         │
-│  │ Admin UI  │  │ Client UI │  │ CLI tools │         │
-│  └──────┬───┘  └──────┬───┘  └──────┬───┘         │
-│           │              │              │                   │
-│           └──────────────┴──────────────┘                   │
-│                          │                                   │
-│                  ┌──────┴──────┐                            │
-│                  │ FastAPI Backend │                            │
-│                  └──────┬──────┘                            │
-│         ┌─────────┴─────────┐                               │
-│    ┌───┴───┐  ┌───┴───┐  ┌───┴─────┐              │
-│    │ SQLite  │  │Keystore │  │ models/   │              │
-│    │  (data) │  │(.bin)   │  │ documents │              │
-│    └────────┘  └────────┘  └──────────┘              │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
+> Versione: 1.0  
+> Data: 2026-07-02  
+> Scope: backend API + storage locale, deployment air-gapped
 
 ---
 
-## STRIDE Threat Analysis
+## 1. Asset di alto valore
 
-### S — Spoofing
-
-| Threat | Likelihood | Impact | Mitigation |
+| Asset | Confidenzialità | Integrità | Disponibilità |
 |---|---|---|---|
-| Credential stuffing via admin UI | Medium | High | Argon2id hashing, account lockout after 5 failures |
-| Session token theft (memory/disk) | Low | High | Short-lived JWT (60 min), session revocation, token hash in DB |
-| Impersonation via JWT forgery | Low | Critical | HS256 with 256-bit secret, server-side session validation |
+| Modelli SSM (pesi) | Alta | Critica | Alta |
+| Documenti / indici vettoriali | Alta | Alta | Alta |
+| Chiavi di cifratura (keystore) | Critica | Critica | Alta |
+| Audit log | Media | Critica | Alta |
+| Credenziali utente (hash Argon2id) | Critica | Alta | Media |
+| Backup cifrati (`.aeb`) | Alta | Alta | Media |
+| Configurazione / .env | Alta | Alta | Media |
+
+---
+
+## 2. Attori di minaccia
+
+| Attore | Vettore | Motivazione | Livello di rischio |
+|---|---|---|---|
+| Utente interno malintenzionato | Accesso fisico alla macchina | Esfiltrazione dati | Alto |
+| Insider con credenziali valide | API locale | Privilege escalation | Alto |
+| Attaccante con accesso fisico temporaneo | USB / boot esterno | Lettura disco | Medio |
+| Attaccante remoto (se rete interna compromessa) | HTTP LAN | Injection, auth bypass | Medio |
+| Software supply chain | Dipendenze Python | Backdoor, data exfil | Medio |
+
+---
+
+## 3. Analisi STRIDE
+
+### S — Spoofing (Impersonation)
+
+| Minaccia | Componente | Mitigazione |
+|---|---|---|
+| Furto di JWT | Token in-memory / header | Token breve scadenza (1h), revocation server-side in `security_sessions` |
+| Brute-force credenziali | `/security/login` | Argon2id (slow hash) + rate-limit applicativo |
+| Session fixation | Login flow | Nuovo session_id a ogni autenticazione |
 
 ### T — Tampering
 
-| Threat | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Model file replacement | Low | Critical | SHA-256 fingerprint registration + automatic verification |
-| Audit log manipulation | Low | High | HMAC-SHA256 chained rows; chain verification detects any edit |
-| DB file tampering | Low | High | File-level permission (0600), encrypted backups |
-| Config file tampering | Medium | High | .env outside web root, read-only in production |
+| Minaccia | Componente | Mitigazione |
+|---|---|---|
+| Modifica pesi modello | File su disco | SHA-256 registrato al deploy, `verify_model_integrity()` prima di ogni load |
+| Modifica audit log | SQLite `audit_logs` | HMAC-SHA256 chained rows — ogni riga firma quella precedente |
+| Modifica backup | File `.aeb` | AES-256-GCM authenticated encryption — ogni modifica invalida il tag |
+| Modifica configurazione | `.env` / DB | File `.env` owned root:root 600; config firmata opzionalmente |
 
 ### R — Repudiation
 
-| Threat | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Deny performing privileged actions | Medium | High | Append-only audit log with HMAC chain, actor/timestamp/outcome |
+| Minaccia | Componente | Mitigazione |
+|---|---|---|
+| Negare azioni compiute | Qualsiasi operazione | Audit log immutabile con user_id, timestamp, action, resource, HMAC chain |
+| Manomissione log post-hoc | `audit_logs` | Chain HMAC; `verify_audit_chain()` rilevabile anche da DB esterno |
 
 ### I — Information Disclosure
 
-| Threat | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Key material exposure | Low | Critical | Keys stored only in keystore.bin (0600), never in DB or logs |
-| Password leak from DB | Low | High | Argon2id hash stored, plaintext never persisted |
-| Log injection / sensitive data in logs | Medium | Medium | structlog structured logging; passwords/tokens never logged |
-| Backup file exposure | Low | High | Backup archives AES-256-GCM encrypted (.aeb) |
+| Minaccia | Componente | Mitigazione |
+|---|---|---|
+| Lettura disco (accesso fisico) | SQLite, modelli, indici | LUKS2 full-disk encryption (OS-level, documentato in `hardening.md`) |
+| Leak in log applicativi | structlog | Nessuna PII, password, token nei log; livello INFO in produzione |
+| Errori verbose in API | FastAPI exception handlers | Handler globale → risposta generica; dettagli solo in log interni |
+| Keystore passphrase in env | `.env` | File fuori repo, chmod 600; passphrase mai loggata |
 
 ### D — Denial of Service
 
-| Threat | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Brute-force login | High | Medium | Account lockout after 5 failures, Argon2id slows guessing |
-| Disk exhaustion via audit log | Medium | Medium | Log rotation policy (structlog rotating sink), DuckDB analytics |
-| Model file corruption | Low | High | Integrity check on every inference startup |
+| Minaccia | Componente | Mitigazione |
+|---|---|---|
+| Flood login | `/security/login` | Rate limiting middleware (configurabile) |
+| Upload massiccio file | Document endpoints | Max size configurabile in settings |
+| Riempimento disco (audit/backup) | Storage locale | Retention policy + alert su soglia spazio |
 
 ### E — Elevation of Privilege
 
-| Threat | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Horizontal privilege escalation | Low | High | RBAC enforced per-endpoint, permissions embedded in JWT |
-| Insecure direct object reference | Medium | Medium | All endpoints validate principal's permissions before DB access |
-| Role assignment abuse | Low | Critical | Only superadmin can modify roles; all changes audit-logged |
+| Minaccia | Componente | Mitigazione |
+|---|---|---|
+| Assegnazione ruolo non autorizzata | `/users/{id}/roles` | Richiede `Permission.USER_WRITE`, disponibile solo a ADMIN/SUPERADMIN |
+| JWT con claim manipolati | Token decode | Firma HMAC-SHA256; verifica `jti` presente in DB e non revocato |
+| SQL injection | SQLModel queries | ORM parametrizzato; nessuna query raw con interpolazione |
 
 ---
 
-## Residual Risks (Accepted)
+## 4. Rischi residui
 
-1. **Physical access** — if an attacker gains physical access to the machine, key material in `keystore.bin` is protected only by the passphrase. Disk encryption (LUKS/BitLocker) is a prerequisite for the host OS and is out of scope for this application layer.
-2. **Side-channel attacks** — timing attacks on HMAC comparison are mitigated via `hmac.compare_digest`; advanced hardware side-channels are out of scope.
-3. **Compromised superadmin** — a malicious superadmin can bypass all controls. Operational controls (dual-person integrity, hardware tokens) are documented in `hardening.md`.
+| Rischio | Probabilità | Impatto | Accettato? | Note |
+|---|---|---|---|---|
+| Accesso fisico prolungato senza LUKS | Media | Critico | No | LUKS2 obbligatorio in produzione |
+| Compromissione supply chain pip | Bassa | Alto | Condizionale | Wheelhouse pinned + hash check |
+| Passphrase keystore debole | Media | Critico | No | Policy minima 20 char documentata |
+| Brute-force offline hash DB | Bassa | Alto | Condizionale | Argon2id + LUKS rendono impraticabile |
 
 ---
 
-## Assets & Data Classification
+## 5. Superficie di attacco
 
-| Asset | Classification | Location | Protection |
-|---|---|---|---|
-| Model weights | Confidential | `models/` | File permissions (0640), integrity hash |
-| Training data | Confidential | `data/` | File permissions, encrypted backup |
-| User credentials | Secret | SQLite `users` table | Argon2id hash, never plaintext |
-| JWT secret key | Secret | `.env` (never in DB) | File permissions (0600) |
-| Keystore passphrase | Secret | `.env` | File permissions (0600) |
-| Audit log | Restricted | SQLite `audit_logs` | HMAC chain, read-only role required |
-| Session tokens | Restricted | SQLite `sessions` | SHA-256 hash stored, raw token in memory only |
+- **Ridotta**: nessun endpoint internet, nessun websocket esterno, nessun cloud SDK
+- **Attiva**: HTTP locale (LAN / loopback), filesystem, processo Python
+- **Consigliata**: bind Uvicorn su `127.0.0.1` in single-user; su IP LAN solo se necessario e con firewall host
+
+---
+
+## 6. Assunzioni di sicurezza
+
+1. L'OS host è trusted e aggiornato.
+2. Il disco è cifrato con LUKS2 prima del deploy.
+3. La passphrase del keystore è gestita fuori banda (non in `.env` in chiaro in produzione).
+4. I modelli SSM sono distribuiti tramite canale sicuro e il loro hash SHA-256 è registrato prima del primo uso.
+5. L'accesso fisico alla macchina è controllato (data center, armadio chiuso).

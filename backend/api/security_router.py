@@ -1,175 +1,312 @@
-"""Security REST endpoints: auth, sessions, audit, RBAC admin."""
+"""Security API router — auth, sessions, audit, model integrity, key rotation, backup."""
+from __future__ import annotations
+
+import io
+import os
 from datetime import datetime
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 
-from backend.domain.ports.security import (
-    AuditEntry, ISecurityPort, UserCredentials, Permission
-)
 from backend.infrastructure.security.dependencies import (
-    get_current_user, require_permission
+    CurrentUser,
+    require_permission,
 )
-from backend.domain.ports.security import UserPrincipal
+from backend.infrastructure.security.service import SecurityService
+from backend.domain.ports.security import Permission
 
-router = APIRouter(prefix="/security", tags=["Security"])
+router = APIRouter(prefix="/security", tags=["security"])
 
 
-# ─── Schemas ──────────────────────────────────────────────────────────────────
-
-class LoginRequest(BaseModel):
-    username: str = Field(min_length=1, max_length=128)
-    password: str = Field(min_length=1)
-
+# ---------------------------------------------------------------------------
+# Request / Response schemas
+# ---------------------------------------------------------------------------
 
 class TokenResponse(BaseModel):
     access_token: str
-    token_type: str
-    expires_at: datetime
-    session_id: str | None
+    token_type: str = "bearer"
+    expires_in: int  # seconds
+
+
+class UserCreateRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    password: str = Field(..., min_length=12)
+    role_names: list[str] = Field(default_factory=lambda: ["viewer"])
+
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    is_active: bool
+    roles: list[str]
+    created_at: datetime
+
+
+class RoleAssignRequest(BaseModel):
+    user_id: str
+    role_names: list[str]
 
 
 class AuditQueryParams(BaseModel):
-    actor_id: Optional[str] = None
+    user_id: Optional[str] = None
+    action: Optional[str] = None
     resource: Optional[str] = None
     since: Optional[datetime] = None
     until: Optional[datetime] = None
-    limit: int = Field(default=50, ge=1, le=500)
+    limit: int = Field(default=100, ge=1, le=1000)
 
 
-class IntegrityRequest(BaseModel):
+class KeyRotateRequest(BaseModel):
+    new_passphrase: Optional[str] = None  # if None, reuses existing passphrase
+
+
+class ModelRegisterRequest(BaseModel):
+    model_path: str = Field(..., description="Absolute path on the local filesystem")
     model_id: str
-    model_path: str
 
 
-# ─── Auth endpoints ───────────────────────────────────────────────────────────
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=12)
 
-@router.post("/auth/login", response_model=TokenResponse, summary="Authenticate user")
+
+# ---------------------------------------------------------------------------
+# Auth endpoints
+# ---------------------------------------------------------------------------
+
+
+def _get_security_service() -> SecurityService:
+    """Placeholder — replaced by the DI container wiring in main.py."""
+    raise RuntimeError("SecurityService not wired — call register_security(app, container)")
+
+
+SecurityDep = Annotated[SecurityService, Depends(_get_security_service)]
+
+
+@router.post("/login", response_model=TokenResponse, summary="Authenticate and obtain JWT")
 async def login(
-    body: LoginRequest,
-    security: ISecurityPort = Depends(lambda: None),  # overridden by DI
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    svc: SecurityDep,
 ):
-    """Exchange credentials for a local JWT session token."""
-    token = await security.authenticate(UserCredentials(
-        username=body.username, password=body.password
-    ))
+    """Username + password → JWT access token (local, no external IdP)."""
+    result = await svc.authenticate(form.username, form.password)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return TokenResponse(
-        access_token=token.access_token,
-        token_type=token.token_type,
-        expires_at=token.expires_at,
-        session_id=token.session_id,
+        access_token=result["token"],
+        expires_in=result["expires_in"],
     )
 
 
-@router.post("/auth/logout", summary="Revoke current session")
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Revoke current session")
 async def logout(
-    principal: UserPrincipal = Depends(get_current_user),
-    security: ISecurityPort = Depends(lambda: None),
+    current_user: CurrentUser,
+    svc: SecurityDep,
+    token: Annotated[str, Depends(require_permission(Permission.SYSTEM_VIEW))],
 ):
-    if principal.permissions and hasattr(principal, "session_id"):
-        pass  # session_id not in principal; client must pass it
-    return {"detail": "Session revoked"}
+    await svc.revoke_session(current_user.session_id)
 
 
 @router.get("/sessions", summary="List active sessions for current user")
 async def list_sessions(
-    principal: UserPrincipal = Depends(get_current_user),
-    security: ISecurityPort = Depends(lambda: None),
+    current_user: CurrentUser,
+    svc: SecurityDep,
 ):
-    return await security.list_active_sessions(principal.user_id)
+    return await svc.list_user_sessions(current_user.user_id)
 
 
-@router.delete("/sessions/{session_id}", summary="Revoke a specific session")
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_session(
     session_id: str,
-    principal: UserPrincipal = Depends(require_permission(Permission.ADMIN_FULL.value)),
-    security: ISecurityPort = Depends(lambda: None),
+    current_user: CurrentUser,
+    svc: SecurityDep,
 ):
-    await security.revoke_session(session_id)
-    return {"detail": "Revoked"}
+    """Revoke any session owned by the current user (or any, if SUPERADMIN)."""
+    await svc.revoke_session(session_id, requesting_user=current_user)
 
 
-# ─── Audit endpoints ──────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# User management
+# ---------------------------------------------------------------------------
 
-@router.post("/audit/query", summary="Query immutable audit log")
+
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    body: UserCreateRequest,
+    _: Annotated[None, Depends(require_permission(Permission.USER_WRITE))],
+    svc: SecurityDep,
+):
+    return await svc.create_user(body.username, body.password, body.role_names)
+
+
+@router.get("/users", response_model=list[UserResponse])
+async def list_users(
+    _: Annotated[None, Depends(require_permission(Permission.USER_READ))],
+    svc: SecurityDep,
+    active_only: bool = Query(default=True),
+):
+    return await svc.list_users(active_only=active_only)
+
+
+@router.patch("/users/{user_id}/roles", response_model=UserResponse)
+async def assign_roles(
+    user_id: str,
+    body: RoleAssignRequest,
+    _: Annotated[None, Depends(require_permission(Permission.USER_WRITE))],
+    svc: SecurityDep,
+):
+    return await svc.assign_roles(user_id, body.role_names)
+
+
+@router.patch("/users/{user_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate_user(
+    user_id: str,
+    _: Annotated[None, Depends(require_permission(Permission.USER_WRITE))],
+    svc: SecurityDep,
+):
+    await svc.deactivate_user(user_id)
+
+
+@router.post("/users/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: CurrentUser,
+    svc: SecurityDep,
+):
+    await svc.change_password(current_user.user_id, body.current_password, body.new_password)
+
+
+# ---------------------------------------------------------------------------
+# Audit log
+# ---------------------------------------------------------------------------
+
+
+@router.get("/audit", summary="Query immutable audit log")
 async def query_audit(
-    params: AuditQueryParams,
-    _: UserPrincipal = Depends(require_permission(Permission.AUDIT_READ.value)),
-    security: ISecurityPort = Depends(lambda: None),
+    _: Annotated[None, Depends(require_permission(Permission.AUDIT_READ))],
+    svc: SecurityDep,
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    resource: Optional[str] = None,
+    since: Optional[datetime] = None,
+    until: Optional[datetime] = None,
+    limit: int = Query(default=100, ge=1, le=1000),
 ):
-    entries = await security.query_audit(
-        actor_id=params.actor_id,
-        resource=params.resource,
-        since=params.since,
-        until=params.until,
-        limit=params.limit,
+    return await svc.query_audit(
+        user_id=user_id,
+        action=action,
+        resource=resource,
+        since=since,
+        until=until,
+        limit=limit,
     )
-    return [{"event_type": e.event_type, "actor": e.actor_username,
-             "resource": e.resource, "action": e.action,
-             "outcome": e.outcome, "timestamp": e.timestamp.isoformat()} for e in entries]
 
 
-# ─── Model integrity ──────────────────────────────────────────────────────────
-
-@router.post("/models/register-hash", summary="Register model file hash")
-async def register_model_hash(
-    body: IntegrityRequest,
-    _: UserPrincipal = Depends(require_permission(Permission.MODEL_WRITE.value)),
-    security: ISecurityPort = Depends(lambda: None),
+@router.post("/audit/verify", summary="Verify HMAC chain integrity")
+async def verify_audit_chain(
+    _: Annotated[None, Depends(require_permission(Permission.AUDIT_READ))],
+    svc: SecurityDep,
 ):
-    h = await security.register_model_hash(body.model_id, body.model_path)
-    return {"model_id": body.model_id, "sha256": h}
+    ok, first_broken = await svc.verify_audit_chain()
+    return {"ok": ok, "first_broken_id": first_broken}
 
 
-@router.post("/models/verify", summary="Verify model file integrity")
+# ---------------------------------------------------------------------------
+# Model integrity
+# ---------------------------------------------------------------------------
+
+
+@router.post("/models/register", status_code=status.HTTP_201_CREATED)
+async def register_model(
+    body: ModelRegisterRequest,
+    _: Annotated[None, Depends(require_permission(Permission.MODEL_WRITE))],
+    svc: SecurityDep,
+):
+    result = await svc.register_model_hash(body.model_id, body.model_path)
+    return {"model_id": body.model_id, "sha256": result.expected_hash}
+
+
+@router.post("/models/{model_id}/verify")
 async def verify_model(
-    body: IntegrityRequest,
-    _: UserPrincipal = Depends(require_permission(Permission.MODEL_READ.value)),
-    security: ISecurityPort = Depends(lambda: None),
+    model_id: str,
+    model_path: str = Query(...),
+    _: Annotated[None, Depends(require_permission(Permission.MODEL_READ))],
+    svc: SecurityDep,
 ):
-    result = await security.verify_model_integrity(body.model_id, body.model_path)
-    return {
-        "model_id": result.model_id,
-        "is_valid": result.is_valid,
-        "algorithm": result.algorithm,
-        "checked_at": result.checked_at.isoformat(),
-    }
+    result = await svc.verify_model_integrity(model_id, model_path)
+    if not result.ok:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "model_id": model_id,
+                "expected": result.expected_hash,
+                "actual": result.actual_hash,
+                "message": "Model file hash mismatch — possible tampering",
+            },
+        )
+    return {"ok": True, "model_id": model_id, "sha256": result.expected_hash}
 
 
-# ─── Key rotation ─────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Encryption key management
+# ---------------------------------------------------------------------------
 
-@router.post("/keys/rotate", summary="Rotate active encryption key")
+
+@router.post("/keys/rotate", summary="Rotate encryption master key")
 async def rotate_key(
-    _: UserPrincipal = Depends(require_permission(Permission.ADMIN_FULL.value)),
-    security: ISecurityPort = Depends(lambda: None),
+    body: KeyRotateRequest,
+    _: Annotated[None, Depends(require_permission(Permission.KEY_ROTATE))],
+    svc: SecurityDep,
 ):
-    new_kid = await security.rotate_key()
+    new_kid = await svc.rotate_encryption_key(body.new_passphrase)
     return {"new_key_id": new_kid}
 
 
-# ─── Backup ───────────────────────────────────────────────────────────────────
-
-class BackupRequest(BaseModel):
-    source_path: str
-    dest_path: str
-
-
-@router.post("/backup/create", summary="Create encrypted backup")
-async def create_backup(
-    body: BackupRequest,
-    _: UserPrincipal = Depends(require_permission(Permission.BACKUP_CREATE.value)),
-    security: ISecurityPort = Depends(lambda: None),
+@router.get("/keys", summary="List key IDs (no secrets)")
+async def list_keys(
+    _: Annotated[None, Depends(require_permission(Permission.KEY_ROTATE))],
+    svc: SecurityDep,
 ):
-    path = await security.create_encrypted_backup(body.source_path, body.dest_path)
+    return await svc.list_key_ids()
+
+
+# ---------------------------------------------------------------------------
+# Encrypted backup
+# ---------------------------------------------------------------------------
+
+
+@router.post("/backup/create", summary="Create encrypted offline backup (.aeb)")
+async def create_backup(
+    _: Annotated[None, Depends(require_permission(Permission.BACKUP_WRITE))],
+    svc: SecurityDep,
+    target_dir: str = Query(default="./backups"),
+):
+    path = await svc.create_backup(target_dir)
     return {"backup_path": path}
 
 
-@router.post("/backup/restore", summary="Restore encrypted backup")
+@router.post("/backup/restore", summary="Restore from encrypted backup")
 async def restore_backup(
-    body: BackupRequest,
-    _: UserPrincipal = Depends(require_permission(Permission.BACKUP_RESTORE.value)),
-    security: ISecurityPort = Depends(lambda: None),
+    _: Annotated[None, Depends(require_permission(Permission.BACKUP_WRITE))],
+    svc: SecurityDep,
+    backup_path: str = Query(...),
+    restore_dir: str = Query(default="./restore"),
 ):
-    await security.restore_encrypted_backup(body.source_path, body.dest_path)
-    return {"detail": "Restored"}
+    await svc.restore_backup(backup_path, restore_dir)
+    return {"restored_to": restore_dir}
+
+
+@router.get("/backup/list", summary="List available local backups")
+async def list_backups(
+    _: Annotated[None, Depends(require_permission(Permission.BACKUP_READ))],
+    svc: SecurityDep,
+    backup_dir: str = Query(default="./backups"),
+):
+    return await svc.list_backups(backup_dir)
