@@ -2,7 +2,6 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError

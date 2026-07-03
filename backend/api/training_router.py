@@ -23,10 +23,10 @@ import uuid
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from backend.domain.ports.training import JobStatus, TrainingConfig, TrainingJob
+from backend.domain.ports.training import TrainingConfig, TrainingJob
 
 router = APIRouter(prefix="/training", tags=["Training"])
 

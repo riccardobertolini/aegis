@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse

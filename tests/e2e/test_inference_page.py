@@ -4,9 +4,9 @@ Requires: pytest-playwright, running admin-studio dev server on http://localhost
 Run with: pytest tests/e2e/ --base-url=http://localhost:5173
 """
 import re
+
 import pytest
 from playwright.sync_api import Page, expect
-
 
 BASE = "http://localhost:5173"
 

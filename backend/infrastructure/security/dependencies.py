@@ -6,7 +6,7 @@ from fastapi import Depends, Header, HTTPException, status
 
 from backend.domain.ports.security import ISecurityPort, UserPrincipal
 from backend.shared.config import get_settings
-from backend.shared.exceptions import AuthenticationError, AuthorizationError
+from backend.shared.exceptions import AuthenticationError
 
 
 @lru_cache(maxsize=1)
@@ -14,11 +14,9 @@ def _get_security_service() -> ISecurityPort:  # type: ignore[return]
     """Returns the singleton SecurityService.  Replace at runtime with DI container."""
     # Import here to avoid circular imports at module load time.
     from backend.infrastructure.security.encryption import LocalKeyStore
-    from backend.infrastructure.security.service import SecurityService
-    from backend.infrastructure.db import get_sync_session  # provided by Phase 2
 
     settings = get_settings()
-    keystore = LocalKeyStore(
+    LocalKeyStore(
         keystore_path=settings.security_keystore_path,  # type: ignore[attr-defined]
         passphrase=settings.security_keystore_passphrase,  # type: ignore[attr-defined]
     )

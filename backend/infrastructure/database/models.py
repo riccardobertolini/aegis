@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
 
-from sqlmodel import Column, Field, JSON, SQLModel, String
+from sqlmodel import Field, SQLModel
 
 
 def _utcnow() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +51,7 @@ class UserModel(SQLModel, table=True):
     role_ids_json: str = Field(default="[]")  # JSON list
     is_active: bool = Field(default=True)
     is_superadmin: bool = Field(default=False)
-    last_login_at: Optional[str] = Field(default=None)
+    last_login_at: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -85,7 +84,7 @@ class CategoryModel(SQLModel, table=True):
     id: str = Field(primary_key=True)
     name: str = Field(index=True)
     description: str = Field(default="")
-    parent_id: Optional[str] = Field(default=None, index=True)
+    parent_id: str | None = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -134,7 +133,7 @@ class MemoryEntryModel(SQLModel, table=True):
     user_id: str = Field(index=True)
     role: str = Field(default="user")
     content: str = Field(default="")  # may be encrypted ciphertext
-    embedding_id: Optional[str] = Field(default=None)
+    embedding_id: str | None = Field(default=None)
     metadata_json: str = Field(default="{}")
     is_encrypted: bool = Field(default=False)
     created_at: datetime = Field(default_factory=_utcnow)
@@ -222,7 +221,7 @@ class AuditLogModel(SQLModel, table=True):
     resource_type: str = Field(index=True)
     resource_id: str = Field(index=True)
     outcome: str = Field(default="ok")
-    ip_address: Optional[str] = Field(default=None)
+    ip_address: str | None = Field(default=None)
     details_json: str = Field(default="{}")
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
@@ -242,7 +241,7 @@ class BackupModel(SQLModel, table=True):
     status: str = Field(default="pending", index=True)
     includes_json: str = Field(default="[]")
     initiated_by: str = Field(default="")
-    error_message: Optional[str] = Field(default=None)
+    error_message: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 

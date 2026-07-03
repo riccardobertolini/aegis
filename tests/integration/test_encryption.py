@@ -1,9 +1,6 @@
 """Integration tests — EncryptionService (local, no network)."""
 from __future__ import annotations
 
-import os
-import tempfile
-
 import pytest
 
 from backend.infrastructure.adapters.encryption import EncryptionService

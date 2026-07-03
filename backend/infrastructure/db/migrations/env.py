@@ -15,7 +15,6 @@ from sqlmodel import SQLModel
 
 # Import all models so their metadata is registered.
 import backend.domain.models  # noqa: F401
-
 from backend.shared.config import get_settings
 
 config = context.config

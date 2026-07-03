@@ -3,13 +3,14 @@ All values come from environment variables or .env file — never hardcoded.
 """
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    jwt_secret: str = "change-me-in-prod"
+    jwt_algorithm: str = "HS256"
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
 
     # ── Core ──
     app_name: str = "Aegis"
+    port: int = 8000
     debug: bool = False
     log_level: str = "INFO"
     log_dir: Path = Path("logs")

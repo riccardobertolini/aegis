@@ -4,17 +4,21 @@ All DB operations are async via aiosqlite + SQLModel.
 """
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from backend.infrastructure.administration.models import (
-    Assistant, AssistantTemplate, Workflow, Rule,
-    Category, FeatureToggle, LanguageConfig, UsageEvent,
+    Assistant,
+    AssistantTemplate,
+    Category,
+    FeatureToggle,
+    LanguageConfig,
+    Rule,
+    UsageEvent,
+    Workflow,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,7 @@ class AssistantRepository:
             return None
         for k, v in kwargs.items():
             setattr(obj, k, v)
-        obj.updated_at = datetime.now(timezone.utc)
+        obj.updated_at = datetime.now(UTC)
         self._s.add(obj)
         await self._s.commit()
         await self._s.refresh(obj)
@@ -133,7 +137,7 @@ class WorkflowRepository:
             return None
         for k, v in kwargs.items():
             setattr(obj, k, v)
-        obj.updated_at = datetime.now(timezone.utc)
+        obj.updated_at = datetime.now(UTC)
         self._s.add(obj)
         await self._s.commit()
         await self._s.refresh(obj)
@@ -216,7 +220,7 @@ class FeatureToggleRepository:
             obj = FeatureToggle(key=key, enabled=enabled, description=description)
         else:
             obj.enabled = enabled
-            obj.updated_at = datetime.now(timezone.utc)
+            obj.updated_at = datetime.now(UTC)
         self._s.add(obj)
         await self._s.commit()
         await self._s.refresh(obj)
@@ -248,7 +252,7 @@ class LanguageConfigRepository:
             obj.label = label
             obj.is_enabled = is_enabled
             obj.is_default = is_default
-            obj.updated_at = datetime.now(timezone.utc)
+            obj.updated_at = datetime.now(UTC)
         self._s.add(obj)
         await self._s.commit()
         await self._s.refresh(obj)

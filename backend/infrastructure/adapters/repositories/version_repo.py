@@ -1,7 +1,6 @@
 """SQLite repository for Version entities (assistants, models, documents)."""
 from __future__ import annotations
 
-from typing import List, Optional
 from uuid import UUID
 
 from sqlmodel import select
@@ -21,7 +20,7 @@ class VersionRepository(BaseSQLiteRepository[Version]):
         entity_type: str,
         entity_id: UUID,
         session: AsyncSession,
-    ) -> List[Version]:
+    ) -> list[Version]:
         result = await session.exec(
             select(Version)
             .where(Version.entity_type == entity_type)
@@ -35,7 +34,7 @@ class VersionRepository(BaseSQLiteRepository[Version]):
         entity_type: str,
         entity_id: UUID,
         session: AsyncSession,
-    ) -> Optional[Version]:
+    ) -> Version | None:
         result = await session.exec(
             select(Version)
             .where(Version.entity_type == entity_type)
@@ -51,7 +50,7 @@ class VersionRepository(BaseSQLiteRepository[Version]):
         entity_id: UUID,
         tag: str,
         session: AsyncSession,
-    ) -> Optional[Version]:
+    ) -> Version | None:
         result = await session.exec(
             select(Version)
             .where(Version.entity_type == entity_type)

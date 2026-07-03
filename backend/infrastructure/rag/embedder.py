@@ -10,7 +10,6 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +36,8 @@ class LocalEmbedder:
     def __init__(
         self,
         model_name_or_path: str = _DEFAULT_MODEL,
-        models_root: Optional[str | Path] = None,
-        device: Optional[str] = None,  # None = auto-detect
+        models_root: str | Path | None = None,
+        device: str | None = None,  # None = auto-detect
         batch_size: int = 64,
         normalize_embeddings: bool = True,
     ) -> None:
@@ -157,7 +156,6 @@ class LocalEmbedder:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    import sys
     import argparse
 
     parser = argparse.ArgumentParser(

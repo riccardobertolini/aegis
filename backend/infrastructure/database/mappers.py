@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from backend.domain.entities.assistant import Assistant, AssistantConfig
 from backend.domain.entities.audit import AuditLog
@@ -13,17 +13,27 @@ from backend.domain.entities.model import Dataset, ModelRecord, ModelStatus, Mod
 from backend.domain.entities.user import Permission, Role, User
 from backend.domain.entities.workflow import Rule, Workflow, WorkflowStatus, WorkflowStep
 from backend.infrastructure.database.models import (
-    AssistantModel, AuditLogModel, BackupModel, CategoryModel,
-    DatasetModel, DocumentModel, KnowledgeBaseModel, MemoryEntryModel,
-    ModelRecordModel, PermissionModel, RoleModel, RuleModel,
-    UserModel, WorkflowModel,
+    AssistantModel,
+    AuditLogModel,
+    BackupModel,
+    CategoryModel,
+    DatasetModel,
+    DocumentModel,
+    KnowledgeBaseModel,
+    MemoryEntryModel,
+    ModelRecordModel,
+    PermissionModel,
+    RoleModel,
+    RuleModel,
+    UserModel,
+    WorkflowModel,
 )
 
 
 def _dt(v) -> datetime:
     if isinstance(v, datetime):
-        return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
-    return datetime.fromisoformat(str(v)).replace(tzinfo=timezone.utc)
+        return v if v.tzinfo else v.replace(tzinfo=UTC)
+    return datetime.fromisoformat(str(v)).replace(tzinfo=UTC)
 
 
 # --- Permission ---

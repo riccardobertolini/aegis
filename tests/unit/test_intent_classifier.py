@@ -14,7 +14,7 @@ def clf():
 # Basic classification                                                 #
 # ------------------------------------------------------------------ #
 
-@pytest.mark.parametrize("text,expected", [
+@pytest.mark.parametrize(("text", "expected"), [
     ("summarize this document",         IntentLabel.SUMMARY),
     ("translate to italian",            IntentLabel.TRANSLATION),
     ("find named entities in the text", IntentLabel.NER),

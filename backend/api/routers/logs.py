@@ -1,10 +1,9 @@
 """API router — Log Engine."""
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Query
 
-from backend.domain.ports.log_engine import LogEntry, LogQuery
+from backend.domain.ports.log_engine import LogQuery
 from backend.infrastructure.adapters.log_engine import LogEngine
 from backend.shared.config import get_settings
 

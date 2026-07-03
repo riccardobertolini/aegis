@@ -8,9 +8,7 @@ Tags:   admin
 """
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -38,17 +36,17 @@ class AssistantCreate(BaseModel):
     description: str = ""
     model_id: str = ""
     system_prompt: str = ""
-    template_id: Optional[int] = None
+    template_id: int | None = None
     meta: str = "{}"
 
 
 class AssistantUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    model_id: Optional[str] = None
-    system_prompt: Optional[str] = None
-    is_active: Optional[bool] = None
-    meta: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
+    model_id: str | None = None
+    system_prompt: str | None = None
+    is_active: bool | None = None
+    meta: str | None = None
 
 
 class AssistantDuplicate(BaseModel):
@@ -70,10 +68,10 @@ class WorkflowCreate(BaseModel):
 
 
 class WorkflowUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    steps: Optional[str] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    description: str | None = None
+    steps: str | None = None
+    is_active: bool | None = None
 
 
 class RuleCreate(BaseModel):
@@ -87,7 +85,7 @@ class RuleCreate(BaseModel):
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     slug: str = Field(min_length=1, max_length=100)
-    parent_id: Optional[int] = None
+    parent_id: int | None = None
     description: str = ""
 
 
@@ -105,9 +103,9 @@ class LanguageUpsert(BaseModel):
 
 
 class UsageQuery(BaseModel):
-    event_type: Optional[str] = None
-    user_id: Optional[str] = None
-    since: Optional[datetime] = None
+    event_type: str | None = None
+    user_id: str | None = None
+    since: datetime | None = None
     limit: int = Field(default=100, ge=1, le=1000)
 
 
@@ -407,8 +405,8 @@ async def query_usage(body: UsageQuery, svc=Depends(_get_svc)):
 
 @router.get("/usage/stats", summary="Aggregated usage statistics")
 async def usage_stats(
-    event_type: Optional[str] = None,
-    since: Optional[datetime] = None,
+    event_type: str | None = None,
+    since: datetime | None = None,
     svc=Depends(_get_svc),
 ):
     return await svc.usage_stats(event_type=event_type, since=since)

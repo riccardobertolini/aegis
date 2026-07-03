@@ -1,13 +1,13 @@
 """Unit tests for CoreAIService."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.domain.ports.core_ai import AIRequest
 from backend.domain.ports.inference import InferenceRequest, InferenceResponse
 from backend.infrastructure.inference.core_ai import CoreAIService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

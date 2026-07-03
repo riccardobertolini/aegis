@@ -5,7 +5,7 @@ import hashlib
 import json
 import logging
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +52,7 @@ class CheckpointManager:
             path=str(ckpt_dir),
             train_loss=train_loss,
             val_loss=val_loss,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         meta = {**asdict(info), "sha256": sha256}
         (ckpt_dir / "meta.json").write_text(json.dumps(meta, indent=2, default=str))
@@ -121,7 +121,7 @@ class CheckpointManager:
     ) -> str:
         """Copy checkpoint weights + config into models/<target_model_id>/."""
         import shutil
-        import torch  # type: ignore
+
 
         ckpt_dir = self._ckpt_dir(job_id, step)
         weight_src = ckpt_dir / "model.pt"

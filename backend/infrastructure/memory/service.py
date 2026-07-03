@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -104,7 +104,7 @@ class MemoryService(IMemoryPort):
             session_id=session_id,
             summary=summary,
             turn_count=len(history),
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
         existing = await self._session.get(SessionSummaryRecord, session_id)
         if existing:
@@ -121,7 +121,7 @@ class MemoryService(IMemoryPort):
         self, page: int = 0, page_size: int = 20
     ) -> list[str]:
         # Distinct session IDs ordered by most recent turn
-        from sqlalchemy import distinct, func
+        from sqlalchemy import func
         stmt = (
             select(ConversationTurnRecord.session_id)
             .group_by(ConversationTurnRecord.session_id)

@@ -7,14 +7,12 @@ Full ingest pipeline:
 from __future__ import annotations
 
 import logging
-import uuid
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.document import IDocumentPort, ParsedDocument
-from backend.infrastructure.rag.parser import DocumentParser
-from backend.infrastructure.rag.chroma_adapter import ChromaKnowledgeAdapter
 from backend.domain.ports.knowledge import Document as KnowledgeDocument
+from backend.infrastructure.rag.chroma_adapter import ChromaKnowledgeAdapter
+from backend.infrastructure.rag.parser import DocumentParser
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +130,9 @@ class DocumentService(IDocumentPort):
         # 2. Persist metadata in SQL (best-effort)
         if self._repo is not None:
             try:
-                from backend.infrastructure.database.models import DocumentModel
                 import json
+
+                from backend.infrastructure.database.models import DocumentModel
                 model = DocumentModel(
                     id=parsed.id,
                     filename=parsed.filename,

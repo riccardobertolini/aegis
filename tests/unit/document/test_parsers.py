@@ -1,10 +1,11 @@
 """Unit tests — parsers."""
 import json
+
 from backend.infrastructure.document.parsers import (
-    detect_mime,
+    HTMLParser,
     JSONParser,
     PlainTextParser,
-    HTMLParser,
+    detect_mime,
     get_parser,
 )
 

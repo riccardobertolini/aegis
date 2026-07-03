@@ -1,11 +1,10 @@
 """Unit tests — MemoryService."""
-import asyncio
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.domain.ports.memory import MemoryEntry, MemoryRole, SessionSummary
+from backend.domain.ports.memory import MemoryEntry, MemoryRole
 from backend.infrastructure.memory.service import MemoryService
 
 
@@ -35,7 +34,7 @@ async def test_append_adds_record():
     svc = MemoryService(session)
     entry = MemoryEntry(
         session_id="s1", role=MemoryRole.USER, content="hello",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
     await svc.append(entry)
     session.add.assert_called_once()
@@ -46,7 +45,7 @@ async def test_append_adds_record():
 async def test_get_history_returns_entries():
     from backend.infrastructure.memory.models import ConversationTurnRecord
     session, turns = _make_session()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     turns.append(
         ConversationTurnRecord(
             session_id="s1", role="user", content="hi",
@@ -63,13 +62,13 @@ async def test_get_history_returns_entries():
 @pytest.mark.asyncio
 async def test_summarize_extractive_fallback():
     session, _ = _make_session()
+
     from backend.infrastructure.memory.models import ConversationTurnRecord
-    from datetime import timezone
     turns_list = [
         ConversationTurnRecord(session_id="s1", role="user", content="What is AI?",
-                               metadata_json="{}", timestamp=datetime.now(timezone.utc)),
+                               metadata_json="{}", timestamp=datetime.now(UTC)),
         ConversationTurnRecord(session_id="s1", role="assistant", content="AI is intelligence.",
-                               metadata_json="{}", timestamp=datetime.now(timezone.utc)),
+                               metadata_json="{}", timestamp=datetime.now(UTC)),
     ]
 
     async def _execute(stmt, *a, **kw):
@@ -87,13 +86,11 @@ async def test_summarize_extractive_fallback():
 
 
 def test_extractive_summary_content():
-    from backend.infrastructure.memory.models import ConversationTurnRecord
-    from datetime import timezone
     entries = [
         MemoryEntry(session_id="s1", role=MemoryRole.USER, content="Ciao",
-                    timestamp=datetime.now(timezone.utc)),
+                    timestamp=datetime.now(UTC)),
         MemoryEntry(session_id="s1", role=MemoryRole.ASSISTANT, content="Risposta.",
-                    timestamp=datetime.now(timezone.utc)),
+                    timestamp=datetime.now(UTC)),
     ]
     summary = MemoryService._extractive_summary(entries)
     assert "Ciao" in summary

@@ -1,6 +1,6 @@
 """Unit tests: AES-256-GCM LocalKeyStore."""
+
 import pytest
-from pathlib import Path
 
 from backend.infrastructure.security.encryption import LocalKeyStore
 

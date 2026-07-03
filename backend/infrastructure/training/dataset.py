@@ -9,10 +9,10 @@ import hashlib
 import json
 import logging
 import shutil
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class DatasetManager:
             raise FileNotFoundError(f"Source dataset not found: {src}")
 
         fmt = self._detect_format(src)
-        version_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        version_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         version_dir = self._root / name / version_id
         version_dir.mkdir(parents=True, exist_ok=True)
 

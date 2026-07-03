@@ -9,14 +9,13 @@ In particular `admin_assistants` vs `assistants` (core AssistantModel).
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlmodel import Field, SQLModel
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -26,12 +25,12 @@ def _now() -> datetime:
 class Assistant(SQLModel, table=True):
     __tablename__ = "admin_assistants"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str = ""
     model_id: str = ""
     system_prompt: str = ""
-    template_id: Optional[int] = Field(default=None, foreign_key="assistant_templates.id")
+    template_id: int | None = Field(default=None, foreign_key="assistant_templates.id")
     is_active: bool = True
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
@@ -45,7 +44,7 @@ class Assistant(SQLModel, table=True):
 class AssistantTemplate(SQLModel, table=True):
     __tablename__ = "assistant_templates"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str = ""
     system_prompt: str = ""
@@ -62,7 +61,7 @@ class AssistantTemplate(SQLModel, table=True):
 class Workflow(SQLModel, table=True):
     __tablename__ = "admin_workflows"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str = ""
     steps: str = "[]"  # JSON array of step dicts
@@ -78,7 +77,7 @@ class Workflow(SQLModel, table=True):
 class Rule(SQLModel, table=True):
     __tablename__ = "admin_rules"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str = ""
     condition: str = ""   # JSON / DSL expression
@@ -95,10 +94,10 @@ class Rule(SQLModel, table=True):
 class Category(SQLModel, table=True):
     __tablename__ = "admin_categories"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     slug: str = Field(index=True)
-    parent_id: Optional[int] = Field(default=None, foreign_key="admin_categories.id")
+    parent_id: int | None = Field(default=None, foreign_key="admin_categories.id")
     description: str = ""
     created_at: datetime = Field(default_factory=_now)
 
@@ -110,7 +109,7 @@ class Category(SQLModel, table=True):
 class FeatureToggle(SQLModel, table=True):
     __tablename__ = "feature_toggles"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     key: str = Field(index=True, unique=True)
     enabled: bool = False
     description: str = ""
@@ -124,7 +123,7 @@ class FeatureToggle(SQLModel, table=True):
 class LanguageConfig(SQLModel, table=True):
     __tablename__ = "language_configs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     code: str = Field(index=True, unique=True)   # e.g. "it", "en", "de"
     label: str = ""                               # e.g. "Italiano"
     is_enabled: bool = True
@@ -139,10 +138,10 @@ class LanguageConfig(SQLModel, table=True):
 class UsageEvent(SQLModel, table=True):
     __tablename__ = "usage_events"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     event_type: str = Field(index=True)  # "inference", "training", "document", etc.
-    user_id: Optional[str] = Field(default=None, index=True)
-    model_id: Optional[str] = None
+    user_id: str | None = Field(default=None, index=True)
+    model_id: str | None = None
     tokens_used: int = 0
     duration_ms: int = 0
     status: str = "ok"  # "ok" | "error"

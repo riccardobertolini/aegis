@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +65,7 @@ class LogEngineService:
                 VALUES (nextval('log_id_seq'), ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                     level.upper(),
                     component,
                     session_id,
@@ -106,7 +106,7 @@ class LogEngineService:
                 params.append(until)
             where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
             sql = f"SELECT * FROM application_logs {where} ORDER BY timestamp DESC LIMIT {limit}"
-            rows = self._conn.execute(sql, params).fetchall()
+            self._conn.execute(sql, params).fetchall()
             cols = [d[0] for d in self._conn.execute(sql, params).description]
             # re-execute to get description + data together
             result = self._conn.execute(sql, params)

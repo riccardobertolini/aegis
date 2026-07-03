@@ -8,8 +8,8 @@ No cloud service, remote DB, or external HTTP call is ever wired here.
 """
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from functools import lru_cache
-from typing import AsyncGenerator
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 

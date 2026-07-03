@@ -1,10 +1,12 @@
 """Unit tests: JWT token creation and verification."""
-import time
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from backend.infrastructure.security.token import (
-    create_access_token, decode_access_token, hash_token
+    create_access_token,
+    decode_access_token,
+    hash_token,
 )
 from backend.shared.exceptions import AuthenticationError
 

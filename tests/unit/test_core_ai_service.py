@@ -9,14 +9,13 @@ from backend.application.inference.inference_engine import InferenceEngine
 from backend.domain.model.model_metadata import ModelMetadata, ModelVersion
 from backend.domain.model.runtime_config import RuntimeConfig
 from backend.domain.ports.core_ai import AIRequest
-from backend.infrastructure.adapters.inference._stub_backend import StubModel, StubTokenizer
 from backend.infrastructure.adapters.inference.context_manager import ContextManager
 from backend.infrastructure.adapters.inference.model_registry import ModelRegistry
 from backend.infrastructure.adapters.inference.model_signer import ModelSigner
 from tests.unit.test_inference_engine import _FakeProvider
 
 
-@pytest.fixture()
+@pytest.fixture
 def core_ai_service(tmp_path: Path) -> CoreAIService:
     meta = ModelMetadata(
         model_id="stub-model",

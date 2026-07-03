@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from backend.domain.ports.inference import (
     IInferencePort,
@@ -35,7 +35,7 @@ class MambaInferenceAdapter(IInferencePort):
     Runs in a thread-pool executor so it never blocks the async event loop.
     """
 
-    def __init__(self, loader: MambaModelLoader, default_model_id: Optional[str] = None) -> None:
+    def __init__(self, loader: MambaModelLoader, default_model_id: str | None = None) -> None:
         self._loader = loader
         self._default_model_id = default_model_id
         self._executor = None  # uses asyncio default thread pool
@@ -82,7 +82,7 @@ class MambaInferenceAdapter(IInferencePort):
         if not self._loader.is_loaded(model_id):
             await self.load_model(model_id)
 
-        queue: asyncio.Queue[Optional[str]] = asyncio.Queue()
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
         loop = asyncio.get_event_loop()
 
         def _run_and_push() -> None:
@@ -266,5 +266,4 @@ def _generate_greedy_sampling(
     except ImportError:
         # No torch at all — yield a placeholder for testing
         logger.error("torch not available; yielding placeholder tokens")
-        for tok in [72, 101, 108, 108, 111]:  # "hello" in bytes
-            yield tok
+        yield from [72, 101, 108, 108, 111]

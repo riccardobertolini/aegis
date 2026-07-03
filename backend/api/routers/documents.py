@@ -1,5 +1,4 @@
 """REST endpoints for the Document Engine."""
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel

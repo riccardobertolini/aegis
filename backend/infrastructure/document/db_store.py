@@ -1,12 +1,10 @@
 """SQLite document metadata store (SQLModel + aiosqlite)."""
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-from sqlmodel import Field, SQLModel, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import Field, SQLModel, select
 
 
 class DocumentRecord(SQLModel, table=True):
@@ -16,12 +14,12 @@ class DocumentRecord(SQLModel, table=True):
     filename: str
     mime_type: str
     status: str = "pending"
-    error: Optional[str] = None
+    error: str | None = None
     char_count: int = 0
     chunk_count: int = 0
     metadata_json: str = Field(default="{}")  # JSON blob
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DocumentDBStore:
@@ -31,7 +29,7 @@ class DocumentDBStore:
         self._session = session
 
     async def upsert(self, record: DocumentRecord) -> None:
-        record.updated_at = datetime.now(timezone.utc)
+        record.updated_at = datetime.now(UTC)
         existing = await self._session.get(DocumentRecord, record.id)
         if existing:
             for k, v in record.model_dump(exclude={"id", "created_at"}).items():

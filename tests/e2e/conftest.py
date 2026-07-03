@@ -7,7 +7,7 @@ Usage:
     pytest tests/e2e/ --base-url=http://localhost:5173 --headed
 """
 import pytest
-from playwright.sync_api import Playwright, Browser, BrowserContext, Page
+from playwright.sync_api import Browser, BrowserContext, Page, Playwright
 
 
 @pytest.fixture(scope="session")

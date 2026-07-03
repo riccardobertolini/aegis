@@ -1,14 +1,13 @@
 """Unit tests for MambaInferenceAdapter (mock loader — no real model needed)."""
 from __future__ import annotations
 
-import asyncio
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.domain.ports.inference import InferenceRequest
 from backend.infrastructure.inference.adapter import MambaInferenceAdapter
 from backend.infrastructure.inference.loader import MambaModelLoader
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -89,7 +88,7 @@ async def test_load_model_delegates_to_loader():
     loader = _make_mock_loader()
     loader.is_loaded.return_value = False
     adapter = MambaInferenceAdapter(loader=loader, default_model_id="test-model")
-    with patch.object(loader, "load", return_value=None) as mock_load:
+    with patch.object(loader, "load", return_value=None):
         await adapter.load_model("test-model")
         # load is called in executor — verify indirectly via is_loaded state
 

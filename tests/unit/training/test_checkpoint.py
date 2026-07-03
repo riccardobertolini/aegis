@@ -1,8 +1,9 @@
 """Unit tests for CheckpointManager (no real PyTorch — mocks state_dict)."""
-import json
-from pathlib import Path
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+pytest.importorskip("torch")
+
 from backend.infrastructure.training.checkpoint import CheckpointManager
 
 

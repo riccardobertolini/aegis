@@ -1,7 +1,7 @@
 """Unit tests: model file integrity hashing."""
-import pytest
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.infrastructure.security.integrity import ModelIntegrityService
 

@@ -1,11 +1,10 @@
 """Security middleware: Bearer token extraction + hardening response headers."""
 from __future__ import annotations
 
+import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-
-import structlog
 
 log = structlog.get_logger(__name__)
 

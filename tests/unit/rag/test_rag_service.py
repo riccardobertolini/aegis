@@ -1,12 +1,13 @@
 """Unit tests for RAGService."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from backend.domain.ports.knowledge import SearchResult, Document
+import pytest
+
 from backend.domain.ports.inference import InferenceResponse
-from backend.infrastructure.rag.rag_service import RAGService, RAGRequest
+from backend.domain.ports.knowledge import Document, SearchResult
+from backend.infrastructure.rag.rag_service import RAGRequest, RAGService
 
 
 def _make_knowledge_mock(results=None) -> MagicMock:

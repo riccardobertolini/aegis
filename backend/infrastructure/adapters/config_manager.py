@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from backend.infrastructure.adapters.encryption import EncryptionService
 
@@ -119,7 +119,11 @@ class ConfigManager:
         if node is not None:
             return node
         # Fallback to global
-        return self.get(key, default)
+        value = self.get(key, None)
+        if value is None and "." in key:
+            head, tail = key.split(".", 1)
+            value = self.get(f"{head}.{assistant_id}.{tail}", None)
+        return default if value is None else value
 
     def set_for_assistant(self, key: str, assistant_id: str, value: Any) -> None:
         overrides = self._assistant_overrides.setdefault(assistant_id, {})
@@ -133,7 +137,7 @@ class ConfigManager:
     # Feature flags
     # ------------------------------------------------------------------
 
-    def feature_enabled(self, feature: str, assistant_id: Optional[str] = None) -> bool:
+    def feature_enabled(self, feature: str, assistant_id: str | None = None) -> bool:
         if assistant_id:
             return bool(
                 self.get_for_assistant(

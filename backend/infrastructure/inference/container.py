@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
-from backend.infrastructure.inference.loader import MambaModelLoader
+from backend.domain.ports.core_ai import ICoreAIPort
+from backend.domain.ports.inference import IInferencePort
+from backend.domain.ports.intent import IIntentPort
+from backend.domain.ports.memory import IMemoryPort
 from backend.infrastructure.inference.adapter import MambaInferenceAdapter
 from backend.infrastructure.inference.core_ai import CoreAIService
-from backend.domain.ports.inference import IInferencePort
-from backend.domain.ports.core_ai import ICoreAIPort
-from backend.domain.ports.memory import IMemoryPort
-from backend.domain.ports.intent import IIntentPort
+from backend.infrastructure.inference.loader import MambaModelLoader
 
 
 class InferenceContainer:
@@ -52,9 +51,9 @@ class InferenceContainer:
         default_model_id: str = "",
         system_prompt: str = "You are Aegis, a helpful AI assistant running fully offline.",
         max_context_turns: int = 10,
-        memory: Optional[IMemoryPort] = None,
-        intent: Optional[IIntentPort] = None,
-    ) -> "InferenceContainer":
+        memory: IMemoryPort | None = None,
+        intent: IIntentPort | None = None,
+    ) -> InferenceContainer:
         """Build and return a fully wired InferenceContainer.
 
         Args:

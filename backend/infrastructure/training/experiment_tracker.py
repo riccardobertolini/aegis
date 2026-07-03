@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from backend.domain.ports.training import ExperimentMetrics

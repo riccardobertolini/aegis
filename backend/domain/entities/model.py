@@ -2,20 +2,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from .base import BaseEntity
 
 
-class ModelType(str, Enum):
+class ModelType(StrEnum):
     SSM_MAMBA = "ssm_mamba"
     SSM_MINIMAL = "ssm_minimal"
     EMBEDDING = "embedding"
     OTHER = "other"
 
 
-class ModelStatus(str, Enum):
+class ModelStatus(StrEnum):
     AVAILABLE = "available"
     LOADING = "loading"
     UNAVAILABLE = "unavailable"

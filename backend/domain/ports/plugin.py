@@ -1,12 +1,11 @@
 """Port: Plugin Engine."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
 from datetime import datetime
-from typing import Optional
+from enum import StrEnum
 
 
-class PluginStatus(str, Enum):
+class PluginStatus(StrEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
@@ -22,9 +21,9 @@ class PluginManifest:
     author: str = ""
     permissions: list[str] = field(default_factory=list)  # allowed: ["fs_read", "db_read"]
     entry_point: str = "main.py"                          # relative path inside plugin dir
-    signature: Optional[str] = None                       # HMAC-SHA256 of manifest JSON
-    checksum: Optional[str] = None                        # SHA-256 of entry_point file
-    installed_at: Optional[datetime] = None
+    signature: str | None = None                       # HMAC-SHA256 of manifest JSON
+    checksum: str | None = None                        # SHA-256 of entry_point file
+    installed_at: datetime | None = None
     status: PluginStatus = PluginStatus.INACTIVE
 
 
@@ -34,7 +33,7 @@ class PluginCallResult:
     method: str
     result: dict
     elapsed_ms: float
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # Allowed permission tokens
@@ -82,7 +81,7 @@ class IPluginPort(ABC):
     async def list_plugins(self) -> list[PluginManifest]: ...
 
     @abstractmethod
-    async def get_manifest(self, plugin_id: str) -> Optional[PluginManifest]: ...
+    async def get_manifest(self, plugin_id: str) -> PluginManifest | None: ...
 
     @abstractmethod
     async def verify_integrity(self, plugin_id: str) -> bool: ...

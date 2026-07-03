@@ -1,12 +1,11 @@
 """Bootstrap: create default roles and superadmin user if DB is empty."""
 import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from backend.domain.ports.security import DEFAULT_ROLES, Permission
-from backend.infrastructure.security.models import (
-    RoleModel, RolePermissionLink, UserModel
-)
+from backend.domain.ports.security import DEFAULT_ROLES
+from backend.infrastructure.security.models import RoleModel, RolePermissionLink, UserModel
 from backend.infrastructure.security.password import hash_password
 
 log = logging.getLogger(__name__)

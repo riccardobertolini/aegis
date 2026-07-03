@@ -1,7 +1,9 @@
 """Unit tests for ModelSigner."""
 import json
 from pathlib import Path
+
 import pytest
+
 from backend.infrastructure.training.signer import ModelSigner
 
 

@@ -6,7 +6,7 @@ import pytest
 from backend.infrastructure.rag.chunker import TextChunker
 
 
-@pytest.fixture()
+@pytest.fixture
 def chunker() -> TextChunker:
     return TextChunker(chunk_size=128, chunk_overlap=16, min_chunk_len=8)
 

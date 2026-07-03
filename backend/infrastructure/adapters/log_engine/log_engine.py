@@ -175,7 +175,7 @@ class LogEngine(ILogEnginePort):
     ) -> int:
         """Bulk-ingest a log file. Returns number of entries ingested."""
         count = 0
-        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 line = line.strip()
                 if not line:

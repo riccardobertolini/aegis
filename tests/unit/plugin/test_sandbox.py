@@ -1,5 +1,4 @@
 """Sandbox tests: verify network access is BLOCKED, and safe ops work."""
-import sys
 import textwrap
 from pathlib import Path
 

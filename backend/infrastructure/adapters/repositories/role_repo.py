@@ -1,8 +1,6 @@
 """SQLite repository for Role and Permission entities."""
 from __future__ import annotations
 
-from typing import List, Optional
-
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -17,11 +15,11 @@ class RoleRepository(BaseSQLiteRepository[Role]):
 
     async def find_by_name(
         self, name: str, session: AsyncSession
-    ) -> Optional[Role]:
+    ) -> Role | None:
         result = await session.exec(select(Role).where(Role.name == name))
         return result.first()
 
-    async def find_all_active(self, session: AsyncSession) -> List[Role]:
+    async def find_all_active(self, session: AsyncSession) -> list[Role]:
         result = await session.exec(select(Role).where(Role.is_active == True))  # noqa: E712
         return list(result.all())
 
@@ -33,7 +31,7 @@ class PermissionRepository(BaseSQLiteRepository[Permission]):
 
     async def find_by_role(
         self, role_id: str, session: AsyncSession
-    ) -> List[Permission]:
+    ) -> list[Permission]:
         result = await session.exec(
             select(Permission).where(Permission.role_id == role_id)
         )
@@ -41,7 +39,7 @@ class PermissionRepository(BaseSQLiteRepository[Permission]):
 
     async def find_by_resource(
         self, resource: str, session: AsyncSession
-    ) -> List[Permission]:
+    ) -> list[Permission]:
         result = await session.exec(
             select(Permission).where(Permission.resource == resource)
         )

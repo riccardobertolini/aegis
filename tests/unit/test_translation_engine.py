@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from backend.domain.ports.translation import TranslationRequest
-from backend.infrastructure.adapters.translation.translation_engine import TranslationEngine
 from backend.infrastructure.adapters.translation.lang_detect import detect_language
+from backend.infrastructure.adapters.translation.translation_engine import TranslationEngine
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def engine(tmp_settings):
 
 
 def run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 class TestTranslationEngine:

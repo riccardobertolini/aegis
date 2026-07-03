@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 import re
 from collections import defaultdict
-from typing import Sequence
 
 from backend.shared.logging import get_logger
 

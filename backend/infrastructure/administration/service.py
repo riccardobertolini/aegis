@@ -6,23 +6,26 @@ backup/restore, config export/import.
 """
 from __future__ import annotations
 
-import json
 import logging
 import shutil
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlmodel.ext.asyncio.session import AsyncSession
-
 from backend.domain.ports.administration import (
-    IAdministrationPort, BackupConfig, SystemHealth,
+    BackupConfig,
+    IAdministrationPort,
+    SystemHealth,
 )
 from backend.infrastructure.administration.repository import (
-    AssistantRepository, TemplateRepository, WorkflowRepository,
-    RuleRepository, CategoryRepository, FeatureToggleRepository,
-    LanguageConfigRepository, UsageRepository,
+    AssistantRepository,
+    CategoryRepository,
+    FeatureToggleRepository,
+    LanguageConfigRepository,
+    RuleRepository,
+    TemplateRepository,
+    UsageRepository,
+    WorkflowRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +89,7 @@ class AdministrationService(IAdministrationPort):
     async def backup(self, config: BackupConfig) -> str:
         dest = Path(config.destination_path)
         dest.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         archive_name = f"aegis-backup-{timestamp}"
         archive_path = self._backup_root / archive_name
 
@@ -322,7 +325,7 @@ class AdministrationService(IAdministrationPort):
         languages = await self.list_languages()
         return {
             "export_version": "1",
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "assistants": assistants,
             "templates": templates,
             "workflows": workflows,

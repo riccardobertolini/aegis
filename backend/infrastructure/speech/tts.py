@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import io
 import logging
-import wave
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.speech import SynthesisRequest, SynthesisResult
 
@@ -104,7 +102,8 @@ class CoquiTTSService:
         self, engine, request: SynthesisRequest
     ) -> SynthesisResult:
         try:
-            import tempfile, os
+            import os
+            import tempfile
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                 tmp_path = tmp.name
             engine.setProperty("rate", int(150 * request.speed))

@@ -8,16 +8,14 @@ Design:
 from __future__ import annotations
 
 import json
-import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import structlog
 
 from backend.domain.model.model_metadata import ModelMetadata, ModelVersion, QuantizationLevel
-from backend.shared.exceptions import ModelNotFoundError
 from backend.infrastructure.adapters.inference.model_signer import ModelSigner
+from backend.shared.exceptions import ModelNotFoundError
 
 log = structlog.get_logger(__name__)
 

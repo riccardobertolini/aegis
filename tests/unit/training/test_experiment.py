@@ -1,5 +1,6 @@
 """Unit tests for ExperimentTracker."""
 import pytest
+
 from backend.infrastructure.training.experiment import ExperimentTracker, MetricPoint
 
 
@@ -39,4 +40,5 @@ def test_list_runs(tracker):
     tracker.start_run("r2", "j2", {})
     runs = tracker.list_runs()
     ids = [r.run_id for r in runs]
-    assert "r1" in ids and "r2" in ids
+    assert "r1" in ids
+    assert "r2" in ids

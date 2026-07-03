@@ -1,8 +1,6 @@
 """API router — Memory Engine."""
-from datetime import datetime
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from backend.domain.ports.memory import MemoryEntry

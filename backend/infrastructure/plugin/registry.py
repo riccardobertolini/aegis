@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.plugin import PluginManifest, PluginStatus
-
 
 _REGISTRY_FILE = "plugin_registry.json"
 
@@ -62,7 +60,7 @@ class PluginRegistry:
             self._entries[plugin_id]["status"] = status.value
             self._save()
 
-    def get(self, plugin_id: str) -> Optional[PluginManifest]:
+    def get(self, plugin_id: str) -> PluginManifest | None:
         entry = self._entries.get(plugin_id)
         if not entry:
             return None

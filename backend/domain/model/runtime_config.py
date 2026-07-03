@@ -1,7 +1,7 @@
 """Runtime configuration for a single inference session."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from backend.domain.model.model_metadata import DeviceTarget, QuantizationLevel
 
@@ -35,6 +35,6 @@ class RuntimeConfig:
     stream_chunk_size: int = 1            # tokens per streamed chunk
 
     @classmethod
-    def from_settings(cls, settings: object) -> "RuntimeConfig":  # type: ignore[override]
+    def from_settings(cls, settings: object) -> RuntimeConfig:  # type: ignore[override]
         """Build a RuntimeConfig from application Settings (populated per-phase)."""
         return cls()

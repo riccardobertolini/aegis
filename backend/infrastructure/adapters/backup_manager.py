@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from backend.infrastructure.adapters.encryption import EncryptionService
 from backend.infrastructure.adapters.storage import StorageManager
@@ -46,9 +46,9 @@ class BackupManager:
     # ------------------------------------------------------------------
 
     def _ts(self) -> str:
-        return datetime.utcnow().strftime("%Y-%m-%dT%H_%M_%S")
+        return datetime.utcnow().strftime("%Y-%m-%dT%H_%M_%S_%f")
 
-    def _wrap(self, backup_type: str, data: Dict[str, Any]) -> bytes:
+    def _wrap(self, backup_type: str, data: dict[str, Any]) -> bytes:
         payload = {
             "version": 1,
             "created_at": datetime.utcnow().isoformat(),
@@ -58,7 +58,7 @@ class BackupManager:
         }
         return self._enc.encrypt(json.dumps(payload).encode("utf-8"))
 
-    def _unwrap(self, blob: bytes) -> Dict[str, Any]:
+    def _unwrap(self, blob: bytes) -> dict[str, Any]:
         plaintext = self._enc.decrypt(blob)
         return json.loads(plaintext.decode("utf-8"))
 
@@ -71,12 +71,12 @@ class BackupManager:
     # Config backup / restore
     # ------------------------------------------------------------------
 
-    def backup_config(self, config_data: Dict[str, Any]) -> str:
+    def backup_config(self, config_data: dict[str, Any]) -> str:
         """Encrypt and persist *config_data*; return the backup file path."""
         blob = self._wrap("config", config_data)
         return self._write(f"{self._ts()}_config.aegbak", blob)
 
-    def restore_config(self, path: str) -> Dict[str, Any]:
+    def restore_config(self, path: str) -> dict[str, Any]:
         """Decrypt and return config data from a backup file."""
         blob = Path(path).read_bytes()
         envelope = self._unwrap(blob)
@@ -86,12 +86,12 @@ class BackupManager:
     # Full backup / restore (DB + config)
     # ------------------------------------------------------------------
 
-    def backup_full(self, db_dump: str, config_data: Dict[str, Any]) -> str:
+    def backup_full(self, db_dump: str, config_data: dict[str, Any]) -> str:
         """Create a full backup containing both DB dump and config."""
         blob = self._wrap("full", {"db_dump": db_dump, "config": config_data})
         return self._write(f"{self._ts()}_full.aegbak", blob)
 
-    def restore_full(self, path: str) -> Dict[str, Any]:
+    def restore_full(self, path: str) -> dict[str, Any]:
         blob = Path(path).read_bytes()
         envelope = self._unwrap(blob)
         return envelope["data"]
@@ -100,7 +100,7 @@ class BackupManager:
     # Listing
     # ------------------------------------------------------------------
 
-    def list_backups(self) -> List[Dict[str, Any]]:
+    def list_backups(self) -> list[dict[str, Any]]:
         """Return metadata for all backup files in the backup directory."""
         result = []
         for p in sorted(self._backup_dir.glob("*.aegbak"), reverse=True):

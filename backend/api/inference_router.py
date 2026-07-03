@@ -12,7 +12,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -37,7 +37,7 @@ class CompletionRequest(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     repetition_penalty: float = Field(default=1.0, ge=0.5, le=2.0)
-    seed: Optional[int] = Field(default=None)
+    seed: int | None = Field(default=None)
     stream: bool = Field(default=False)
 
 

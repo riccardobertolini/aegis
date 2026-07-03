@@ -5,7 +5,6 @@ Verifies that Sidebar.tsx (or wherever NAV_ITEMS lives) exposes links for the
 three new sections: inference, documents, memory.
 """
 import pathlib
-import re
 
 import pytest
 
@@ -37,7 +36,7 @@ def test_nav_item_href_present(sidebar_source: str, href: str):
     )
 
 
-@pytest.mark.parametrize("label", ["Inference", "Documents", "Memory"]):
+@pytest.mark.parametrize("label", ["Inference", "Documents", "Memory"])
 def test_nav_item_label_present(sidebar_source: str, label: str):
     """Each link must display a human-readable label."""
     assert label in sidebar_source, (

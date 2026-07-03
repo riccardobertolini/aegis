@@ -1,17 +1,16 @@
 """Shared contracts for Intent Engine and all modalities."""
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
-
 
 # ------------------------------------------------------------------ #
 # Intent taxonomy                                                      #
 # ------------------------------------------------------------------ #
 
-class IntentLabel(str, Enum):
+class IntentLabel(StrEnum):
     CLASSIFICATION   = "classification"
     DOCUMENT_ANALYSIS = "document_analysis"
     EXTRACTION       = "extraction"

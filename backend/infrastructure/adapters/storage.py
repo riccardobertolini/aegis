@@ -17,7 +17,6 @@ import hashlib
 import re
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from backend.infrastructure.adapters.encryption import EncryptionService
 
@@ -94,7 +93,7 @@ class StorageManager:
     def compute_sha256(self, path: str) -> str:
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
-    def verify_integrity(self, path: str, expected_sha256: Optional[str] = None) -> bool:
+    def verify_integrity(self, path: str, expected_sha256: str | None = None) -> bool:
         """Return True if the file exists and (optionally) matches *expected_sha256*."""
         p = Path(path)
         if not p.exists():

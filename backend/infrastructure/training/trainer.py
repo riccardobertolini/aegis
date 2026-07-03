@@ -9,11 +9,12 @@ import asyncio
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from backend.infrastructure.training.experiment import ExperimentTracker, MetricPoint
 from backend.infrastructure.training.checkpoint import CheckpointManager
+from backend.infrastructure.training.experiment import ExperimentTracker, MetricPoint
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,4 @@
 """Unit tests for Settings configuration."""
-import os
 
 import pytest
 

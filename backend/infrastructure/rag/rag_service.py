@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
-from backend.domain.ports.knowledge import IKnowledgePort, SearchQuery, SearchResult
 from backend.domain.ports.inference import IInferencePort, InferenceRequest
+from backend.domain.ports.knowledge import IKnowledgePort, SearchQuery, SearchResult
 
 logger = logging.getLogger(__name__)
 

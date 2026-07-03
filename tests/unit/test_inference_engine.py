@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -19,12 +18,11 @@ from backend.infrastructure.adapters.inference.model_registry import ModelRegist
 from backend.infrastructure.adapters.inference.model_signer import ModelSigner
 from backend.shared.exceptions import ModelNotFoundError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def stub_meta() -> ModelMetadata:
     return ModelMetadata(
         model_id="stub-model",
@@ -35,7 +33,7 @@ def stub_meta() -> ModelMetadata:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def registry(tmp_path: Path, stub_meta: ModelMetadata) -> ModelRegistry:
     signer = ModelSigner(secret_key=b"test-key-32-bytes-padding-here!!")
     reg = ModelRegistry(models_dir=tmp_path / "models", signer=signer)
@@ -81,7 +79,7 @@ class _FakeProvider(IModelProvider):
         return tok.decode(token_ids)
 
 
-@pytest.fixture()
+@pytest.fixture
 def engine(registry: ModelRegistry) -> InferenceEngine:
     provider = _FakeProvider()
     ctx = ContextManager()
@@ -95,12 +93,12 @@ def engine(registry: ModelRegistry) -> InferenceEngine:
 
 class TestInferenceEngine:
     def test_list_models(self, engine: InferenceEngine) -> None:
-        models = asyncio.get_event_loop().run_until_complete(engine.list_models())
+        models = asyncio.run(engine.list_models())
         assert "stub-model" in models
 
     def test_run_returns_response(self, engine: InferenceEngine) -> None:
         req = InferenceRequest(prompt="hello", model_id="stub-model", max_tokens=8)
-        resp = asyncio.get_event_loop().run_until_complete(engine.run(req))
+        resp = asyncio.run(engine.run(req))
         assert resp.model_id == "stub-model"
         assert resp.completion_tokens == 8
         assert isinstance(resp.text, str)
@@ -108,7 +106,7 @@ class TestInferenceEngine:
     def test_run_unknown_model_raises(self, engine: InferenceEngine) -> None:
         req = InferenceRequest(prompt="hello", model_id="nonexistent", max_tokens=4)
         with pytest.raises(ModelNotFoundError):
-            asyncio.get_event_loop().run_until_complete(engine.run(req))
+            asyncio.run(engine.run(req))
 
     def test_stream_yields_strings(self, engine: InferenceEngine) -> None:
         req = InferenceRequest(prompt="hello", model_id="stub-model", max_tokens=4, stream=True)
@@ -119,7 +117,7 @@ class TestInferenceEngine:
                 tokens.append(t)
             return tokens
 
-        tokens = asyncio.get_event_loop().run_until_complete(_collect())
+        tokens = asyncio.run(_collect())
         assert len(tokens) == 4
         assert all(isinstance(t, str) for t in tokens)
 
@@ -128,13 +126,13 @@ class TestInferenceEngine:
             InferenceRequest(prompt="q1", model_id="stub-model", max_tokens=4),
             InferenceRequest(prompt="q2", model_id="stub-model", max_tokens=4),
         ]
-        results = asyncio.get_event_loop().run_until_complete(engine.run_batch(reqs))
+        results = asyncio.run(engine.run_batch(reqs))
         assert len(results) == 2
 
     def test_load_and_unload(self, engine: InferenceEngine) -> None:
-        asyncio.get_event_loop().run_until_complete(engine.load_model("stub-model"))
-        asyncio.get_event_loop().run_until_complete(engine.unload_model("stub-model"))
+        asyncio.run(engine.load_model("stub-model"))
+        asyncio.run(engine.unload_model("stub-model"))
         # After unload, running again should reload transparently
         req = InferenceRequest(prompt="test", model_id="stub-model", max_tokens=4)
-        resp = asyncio.get_event_loop().run_until_complete(engine.run(req))
+        resp = asyncio.run(engine.run(req))
         assert resp.completion_tokens == 4

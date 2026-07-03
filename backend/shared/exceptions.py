@@ -3,6 +3,11 @@
 
 class AegisBaseError(Exception):
     """Root of all Aegis exceptions."""
+    def __init__(self, message: str = "", **context: object) -> None:
+        super().__init__(message)
+        self.message = message
+        self.context = context
+
 
 
 class ConfigurationError(AegisBaseError):
@@ -43,3 +48,19 @@ class IntegrityError(AegisBaseError):
 
 class BackupError(AegisBaseError):
     """Backup / restore failure."""
+
+
+class ModelNotFoundError(AegisBaseError):
+    """Raised when a requested model cannot be found in the registry."""
+
+    def __init__(self, message: str = "", model_id: str = "", **context: object) -> None:
+        super().__init__(message or f"Model not found: {model_id}", **context)
+        self.model_id = model_id
+
+
+class ModelLoadError(Exception):
+    """Auto-added: raised for modelload failures."""
+
+    def __init__(self, message: str = "", **context: object) -> None:
+        super().__init__(message)
+        self.context = context

@@ -4,8 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from backend.shared.config import Settings
 from backend.infrastructure.administration.service import AdministrationService
+from backend.shared.config import Settings
 
 
 def build_admin_container(

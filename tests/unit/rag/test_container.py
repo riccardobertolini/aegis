@@ -1,13 +1,14 @@
 """Unit tests for DocumentContainer wiring."""
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from backend.infrastructure.rag.container import DocumentContainer
+import pytest
+
 from backend.domain.ports.document import IDocumentPort
 from backend.domain.ports.knowledge import IKnowledgePort
+from backend.infrastructure.rag.container import DocumentContainer
 from backend.infrastructure.rag.rag_service import RAGService
 
 
@@ -16,7 +17,7 @@ def _null_inference():
     return m
 
 
-@pytest.fixture()
+@pytest.fixture
 def container(tmp_path: Path):
     try:
         import chromadb  # noqa

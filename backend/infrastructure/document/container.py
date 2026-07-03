@@ -14,9 +14,6 @@ from backend.infrastructure.document.rag_pipeline import RAGPipeline
 from backend.infrastructure.document.vector_store import ChromaVectorStore
 
 
-@dataclass_like = None  # Not a dataclass — plain class for IDE clarity
-
-
 class DocumentContainer:
     def __init__(
         self,

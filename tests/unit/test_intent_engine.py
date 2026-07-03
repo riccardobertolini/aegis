@@ -18,7 +18,7 @@ def engine():
 
 
 def test_run_returns_response(engine):
-    resp = asyncio.get_event_loop().run_until_complete(
+    resp = asyncio.run(
         engine.run("sess-1", "summarize this document")
     )
     assert resp.session_id == "sess-1"
@@ -26,7 +26,7 @@ def test_run_returns_response(engine):
 
 
 def test_force_intent_bypasses_classifier(engine):
-    resp = asyncio.get_event_loop().run_until_complete(
+    resp = asyncio.run(
         engine.run("sess-2", "random text", force_intent=IntentLabel.SUMMARY)
     )
     assert resp.intent == IntentLabel.SUMMARY
@@ -42,6 +42,6 @@ def test_disable_then_enable_modality(engine):
 def test_classify_only(engine):
     from backend.domain.ports.intent import IntentRequest
     req = IntentRequest(text="translate to french", session_id="sess-3")
-    result = asyncio.get_event_loop().run_until_complete(engine.classify(req))
+    result = asyncio.run(engine.classify(req))
     assert result.intent == IntentLabel.TRANSLATION.value
     assert result.confidence > 0

@@ -15,7 +15,6 @@ Auto-detect source language when source_lang == "auto".
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 

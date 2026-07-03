@@ -2,11 +2,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     # Model management
     MODEL_READ = "model:read"
     MODEL_WRITE = "model:write"
@@ -72,7 +71,7 @@ class AuthToken:
     access_token: str
     token_type: str = "bearer"
     expires_at: datetime = field(default_factory=datetime.utcnow)
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 @dataclass
@@ -103,7 +102,7 @@ class AuditEntry:
     outcome: str  # "success" | "denied" | "error"
     details: dict = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    ip_address: Optional[str] = None
+    ip_address: str | None = None
 
 
 class ISecurityPort(ABC):
@@ -160,10 +159,10 @@ class ISecurityPort(ABC):
     @abstractmethod
     async def query_audit(
         self,
-        actor_id: Optional[str] = None,
-        resource: Optional[str] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        actor_id: str | None = None,
+        resource: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 100,
     ) -> list[AuditEntry]: ...
 

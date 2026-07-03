@@ -7,7 +7,6 @@ set AEGIS_TRUSTED_PROXIES=127.0.0.1 and use X-Forwarded-For.
 from __future__ import annotations
 
 import logging
-from ipaddress import ip_address
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware

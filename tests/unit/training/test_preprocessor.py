@@ -1,5 +1,6 @@
 """Unit tests for Preprocessor."""
 import pytest
+
 from backend.infrastructure.training.preprocessor import Preprocessor
 
 

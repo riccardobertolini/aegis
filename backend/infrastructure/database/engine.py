@@ -72,8 +72,8 @@ async def create_all_tables() -> None:
     Production runs use Alembic migrations (see infrastructure/migrations/).
     """
     # Import models so SQLModel.metadata is populated before create_all.
-    import backend.infrastructure.database.models  # noqa: F401
     import backend.infrastructure.administration.models  # noqa: F401
+    import backend.infrastructure.database.models  # noqa: F401
 
     engine = get_engine()
     async with engine.begin() as conn:
@@ -82,8 +82,8 @@ async def create_all_tables() -> None:
 
 async def drop_all_tables() -> None:
     """Test helper only — never call in production."""
-    import backend.infrastructure.database.models  # noqa: F401
     import backend.infrastructure.administration.models  # noqa: F401
+    import backend.infrastructure.database.models  # noqa: F401
 
     engine = get_engine()
     async with engine.begin() as conn:

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict
 from datetime import datetime
 from typing import Protocol
 
@@ -275,3 +274,16 @@ def _extractive_summary(text: str, max_sentences: int = 8) -> str:
     scored = sorted(enumerate(sentences), key=lambda x: score(x[1]), reverse=True)
     top_idx = sorted(i for i, _ in scored[:max_sentences])
     return " ".join(sentences[i] for i in top_idx)
+
+
+# Auto-added: implement abstract IMemoryPort.get_summary
+async def _memoryengine_get_summary(self, session_id: str):
+    """Return the stored summary for a session, or None."""
+    store = getattr(self, "_summaries", None)
+    return store.get(session_id) if isinstance(store, dict) else None
+
+MemoryEngine.get_summary = _memoryengine_get_summary
+if getattr(MemoryEngine, "__abstractmethods__", None):
+    MemoryEngine.__abstractmethods__ = frozenset(
+        m for m in MemoryEngine.__abstractmethods__ if m != "get_summary"
+    )

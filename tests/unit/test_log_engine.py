@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import tempfile
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,7 +26,7 @@ def engine(tmp_settings):
 
 
 def run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _entry(msg, level="INFO", source="test"):

@@ -1,8 +1,5 @@
 """Unit tests — ExperimentTracker."""
-from datetime import datetime, timezone
-from pathlib import Path
-
-import pytest
+from datetime import UTC, datetime
 
 from backend.domain.ports.training import ExperimentMetrics
 from backend.infrastructure.training.experiment_tracker import ExperimentTracker
@@ -15,7 +12,7 @@ def test_init_and_log(tmp_path):
         job_id="job1", step=1, epoch=0,
         train_loss=2.5, val_loss=2.8,
         learning_rate=1e-4, tokens_per_second=120.0,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
     tracker.log_metrics(m)
     rows = tracker.read_metrics("job1")
@@ -29,7 +26,7 @@ def test_multiple_steps(tmp_path):
     for i in range(5):
         tracker.log_metrics(ExperimentMetrics(
             job_id="job2", step=i, epoch=0,
-            train_loss=float(i), timestamp=datetime.now(timezone.utc),
+            train_loss=float(i), timestamp=datetime.now(UTC),
         ))
     rows = tracker.read_metrics("job2")
     assert len(rows) == 5

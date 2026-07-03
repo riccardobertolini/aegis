@@ -6,7 +6,8 @@ Works with any tokenizer that exposes .encode(text) → ids.
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

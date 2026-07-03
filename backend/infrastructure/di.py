@@ -6,9 +6,9 @@ FastAPI routers depend on these via Depends().
 """
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from functools import lru_cache
 from pathlib import Path
-from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,17 +19,23 @@ from backend.infrastructure.adapters.repositories.assistant_repo import SQLiteAs
 from backend.infrastructure.adapters.repositories.audit_repo import SQLiteAuditLogRepository
 from backend.infrastructure.adapters.repositories.backup_repo import SQLiteBackupRepository
 from backend.infrastructure.adapters.repositories.document_repo import (
-    SQLiteCategoryRepository, SQLiteDocumentRepository, SQLiteKnowledgeBaseRepository,
+    SQLiteCategoryRepository,
+    SQLiteDocumentRepository,
+    SQLiteKnowledgeBaseRepository,
 )
 from backend.infrastructure.adapters.repositories.memory_repo import SQLiteMemoryEntryRepository
 from backend.infrastructure.adapters.repositories.model_repo import (
-    SQLiteDatasetRepository, SQLiteModelRecordRepository,
+    SQLiteDatasetRepository,
+    SQLiteModelRecordRepository,
 )
 from backend.infrastructure.adapters.repositories.user_repo import (
-    SQLitePermissionRepository, SQLiteRoleRepository, SQLiteUserRepository,
+    SQLitePermissionRepository,
+    SQLiteRoleRepository,
+    SQLiteUserRepository,
 )
 from backend.infrastructure.adapters.repositories.workflow_repo import (
-    SQLiteRuleRepository, SQLiteWorkflowRepository,
+    SQLiteRuleRepository,
+    SQLiteWorkflowRepository,
 )
 from backend.infrastructure.adapters.storage import LocalStorageAdapter
 from backend.infrastructure.database.engine import get_session

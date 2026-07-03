@@ -1,6 +1,6 @@
 """Unit tests for KnowledgeEngine (with mocked dependencies)."""
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -26,8 +26,8 @@ def mock_store():
 
 @pytest.fixture
 def engine(mock_embedding, mock_store):
-    from backend.infrastructure.adapters.knowledge.knowledge_engine import KnowledgeEngine
     from backend.infrastructure.adapters.document.document_engine import DocumentEngine
+    from backend.infrastructure.adapters.knowledge.knowledge_engine import KnowledgeEngine
 
     return KnowledgeEngine(
         document_engine=DocumentEngine(chunk_size=200, overlap=20),

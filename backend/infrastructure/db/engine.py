@@ -9,9 +9,9 @@ from __future__ import annotations
 from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from backend.shared.config import get_settings
 

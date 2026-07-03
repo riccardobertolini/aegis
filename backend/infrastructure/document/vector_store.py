@@ -2,11 +2,8 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from pathlib import Path
 from typing import Any
-
-from backend.domain.ports.knowledge import Document, SearchQuery, SearchResult
 
 logger = logging.getLogger(__name__)
 

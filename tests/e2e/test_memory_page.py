@@ -2,9 +2,9 @@
 E2E smoke tests — MemoryPage (/memory)
 """
 import re
+
 import pytest
 from playwright.sync_api import Page, expect
-
 
 BASE = "http://localhost:5173"
 

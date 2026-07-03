@@ -1,7 +1,8 @@
 """Unit tests for SSM-backed intent classifier."""
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.infrastructure.intent.ssm_classifier import SSMIntentClassifier
 

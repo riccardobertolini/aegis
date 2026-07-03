@@ -1,6 +1,4 @@
 """Unit tests for ModelSigner — file hashing and HMAC signing."""
-import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -8,7 +6,7 @@ import pytest
 from backend.infrastructure.adapters.inference.model_signer import ModelSigner
 
 
-@pytest.fixture()
+@pytest.fixture
 def signer() -> ModelSigner:
     return ModelSigner(secret_key=b"test-secret-key-32-bytes-padding!")
 

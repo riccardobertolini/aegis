@@ -3,16 +3,14 @@
 Format: [4-byte magic][16-byte salt][12-byte nonce][ciphertext]
 The backup key is derived from the keystore passphrase + a separate backup salt.
 """
-import hashlib
 import secrets
-import shutil
 import tarfile
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 
 _MAGIC = b"AEGB"  # Aegis Encrypted Backup
 _KEY_BYTES = 32

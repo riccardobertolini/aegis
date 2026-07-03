@@ -10,7 +10,7 @@ Responsibilities:
 from __future__ import annotations
 
 import time
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import structlog
 
@@ -20,7 +20,7 @@ from backend.domain.ports.inference import InferenceRequest, InferenceResponse
 from backend.domain.ports.model_provider import IModelProvider
 from backend.infrastructure.adapters.inference.context_manager import ContextManager
 from backend.infrastructure.adapters.inference.model_registry import ModelRegistry
-from backend.shared.exceptions import InferenceError, ModelLoadError, ModelNotFoundError
+from backend.shared.exceptions import InferenceError, ModelLoadError
 
 log = structlog.get_logger(__name__)
 

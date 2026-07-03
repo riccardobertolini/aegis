@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from backend.shared.logging import get_logger
 
-from .models import IntentLabel, ModalityRequest, ModalityResponse
-from .modalities.base import BaseModality, ICoreAI
 from .modalities import (
     ClassificationModality,
     ConversationModality,
@@ -20,6 +18,8 @@ from .modalities import (
     TimeseriesModality,
     TranslationModality,
 )
+from .modalities.base import BaseModality, ICoreAI
+from .models import IntentLabel, ModalityRequest, ModalityResponse
 
 logger = get_logger(__name__)
 

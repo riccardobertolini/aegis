@@ -1,7 +1,6 @@
 """Port: Translation Engine."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -17,7 +16,7 @@ class TranslationResult:
     text: str
     source_lang: str
     target_lang: str
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict = field(default_factory=dict)
 
 

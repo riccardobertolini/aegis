@@ -1,8 +1,6 @@
 """SQLite repository for Backup records."""
 from __future__ import annotations
 
-from typing import List, Optional
-
 from sqlmodel import select
 
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
@@ -12,7 +10,7 @@ from backend.infrastructure.database.models import BackupModel
 class SQLiteBackupRepository(BaseSQLiteRepository[BackupModel]):
     model = BackupModel
 
-    async def find_by_status(self, status: str) -> List[BackupModel]:
+    async def find_by_status(self, status: str) -> list[BackupModel]:
         result = await self._session.exec(
             select(BackupModel)
             .where(BackupModel.status == status)
@@ -20,7 +18,7 @@ class SQLiteBackupRepository(BaseSQLiteRepository[BackupModel]):
         )
         return list(result.all())
 
-    async def find_latest(self, n: int = 10) -> List[BackupModel]:
+    async def find_latest(self, n: int = 10) -> list[BackupModel]:
         result = await self._session.exec(
             select(BackupModel)
             .order_by(BackupModel.created_at.desc())  # type: ignore[attr-defined]
@@ -28,7 +26,7 @@ class SQLiteBackupRepository(BaseSQLiteRepository[BackupModel]):
         )
         return list(result.all())
 
-    async def find_by_label(self, label: str) -> Optional[BackupModel]:
+    async def find_by_label(self, label: str) -> BackupModel | None:
         result = await self._session.exec(
             select(BackupModel).where(BackupModel.label == label)
         )

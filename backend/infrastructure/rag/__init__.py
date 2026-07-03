@@ -1,11 +1,11 @@
 """RAG (Retrieval-Augmented Generation) infrastructure package."""
-from .parser import DocumentParser
-from .chunker import TextChunker
-from .embedder import LocalEmbedder
 from .chroma_adapter import ChromaKnowledgeAdapter
-from .document_service import DocumentService
-from .rag_service import RAGService
+from .chunker import TextChunker
 from .container import DocumentContainer
+from .document_service import DocumentService
+from .embedder import LocalEmbedder
+from .parser import DocumentParser
+from .rag_service import RAGService
 
 __all__ = [
     "DocumentParser",

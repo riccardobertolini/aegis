@@ -14,17 +14,14 @@ Keystore layout (JSON, encrypted with master key derived from passphrase):
 Master key derivation: PBKDF2-HMAC-SHA256, 600_000 iterations, salt in keystore header.
 """
 import base64
-import hashlib
 import json
-import os
 import secrets
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 
 _NONCE_BYTES = 12
 _KEY_BYTES = 32  # AES-256
@@ -51,8 +48,8 @@ class LocalKeyStore:
         self._path = Path(keystore_path)
         self._passphrase = passphrase
         self._keystore: dict = {"active_key_id": "", "keys": {}}
-        self._master_key: Optional[bytes] = None
-        self._salt: Optional[bytes] = None
+        self._master_key: bytes | None = None
+        self._salt: bytes | None = None
         self._load_or_init()
 
     # ── persistence ──

@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 from backend.domain.ports.inference import IInferencePort, InferenceRequest
 
-
 INTENT_SCHEMA = {
     "intent": "string",
     "confidence": "float 0..1",

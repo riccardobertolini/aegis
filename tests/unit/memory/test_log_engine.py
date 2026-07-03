@@ -1,7 +1,6 @@
 """Unit tests — LogEngineService (in-memory DuckDB)."""
+
 import pytest
-from pathlib import Path
-from datetime import datetime, timezone
 
 
 def _try_import_duckdb():

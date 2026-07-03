@@ -1,6 +1,6 @@
 """Inference infrastructure package."""
-from .loader import MambaModelLoader
 from .adapter import MambaInferenceAdapter
 from .container import InferenceContainer
+from .loader import MambaModelLoader
 
 __all__ = ["MambaModelLoader", "MambaInferenceAdapter", "InferenceContainer"]

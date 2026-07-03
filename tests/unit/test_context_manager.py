@@ -5,7 +5,7 @@ from backend.domain.model.runtime_config import RuntimeConfig
 from backend.infrastructure.adapters.inference.context_manager import ContextManager
 
 
-@pytest.fixture()
+@pytest.fixture
 def config() -> RuntimeConfig:
     return RuntimeConfig(
         max_context_length=64,

@@ -62,7 +62,7 @@ class FallbackHashEmbedder:
     DIM = 64
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        import hashlib, struct
+        import hashlib
         result = []
         for text in texts:
             raw = hashlib.sha512(text.encode()).digest()  # 64 bytes

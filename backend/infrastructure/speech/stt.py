@@ -4,14 +4,10 @@ from __future__ import annotations
 import io
 import logging
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.speech import (
-    ISpeechPort,
     TranscriptionRequest,
     TranscriptionResult,
-    SynthesisRequest,
-    SynthesisResult,
 )
 
 logger = logging.getLogger(__name__)

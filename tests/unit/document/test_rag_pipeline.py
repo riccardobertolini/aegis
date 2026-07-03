@@ -1,7 +1,8 @@
 """Unit tests — RAGPipeline with mocked knowledge + inference."""
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.domain.ports.knowledge import Document, SearchResult
 from backend.infrastructure.document.rag_pipeline import RAGPipeline, RAGRequest
@@ -68,7 +69,7 @@ def test_rag_empty_retrieval_handles_gracefully(mock_inference):
     knowledge.search.return_value = []
     pipeline = RAGPipeline(knowledge, mock_inference)
     req = RAGRequest(question="Unanswerable?")
-    result = run(pipeline.run(req))
+    run(pipeline.run(req))
     # Should still call generate with "No relevant context found"
     call_args = mock_inference.generate.call_args
     prompt = call_args.kwargs.get("prompt") or call_args.args[0]

@@ -1,6 +1,5 @@
 """Unit tests for DatasetManager."""
 from pathlib import Path
-import tempfile
 
 import pytest
 

@@ -4,11 +4,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from backend.infrastructure.training.checkpoint import CheckpointManager
 from backend.infrastructure.training.dataset import DatasetManager
 from backend.infrastructure.training.experiment import ExperimentTracker
-from backend.infrastructure.training.checkpoint import CheckpointManager
-from backend.infrastructure.training.signer import ModelSigner
 from backend.infrastructure.training.service import TrainingService
+from backend.infrastructure.training.signer import ModelSigner
 
 
 def build_training_container(

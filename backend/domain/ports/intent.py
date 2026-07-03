@@ -1,10 +1,10 @@
 """Port: Intent Engine."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class IntentMode(str, Enum):
+class IntentMode(StrEnum):
     HEURISTIC = "heuristic"
     SSM = "ssm"
     HYBRID = "hybrid"

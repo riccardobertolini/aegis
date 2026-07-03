@@ -1,14 +1,12 @@
 """Model file integrity: SHA-256 hashing and verification."""
 import hashlib
 from datetime import datetime
-from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from backend.domain.ports.security import ModelIntegrityResult
 from backend.infrastructure.security.models import ModelHashModel
-
 
 _CHUNK = 1 << 20  # 1 MiB read chunks
 

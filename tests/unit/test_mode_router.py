@@ -3,8 +3,8 @@ import asyncio
 
 import pytest
 
-from backend.infrastructure.adapters.intent.models import IntentLabel, ModalityRequest
 from backend.infrastructure.adapters.intent.mode_router import ModeRouter
+from backend.infrastructure.adapters.intent.models import IntentLabel, ModalityRequest
 
 
 class MockCoreAI:

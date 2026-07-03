@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class DocumentFormat(str, Enum):
+class DocumentFormat(StrEnum):
     PDF = "pdf"
     DOCX = "docx"
     XLSX = "xlsx"

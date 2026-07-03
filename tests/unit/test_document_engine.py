@@ -72,7 +72,7 @@ def test_chunker_dedup(engine):
 
 def test_chunker_overlap():
     from backend.infrastructure.adapters.document.chunker import chunk_text
-    from backend.infrastructure.adapters.document.models import ParsedDocument, DocumentFormat
+    from backend.infrastructure.adapters.document.models import DocumentFormat, ParsedDocument
 
     doc = ParsedDocument(
         source_path="/fake/test.txt",

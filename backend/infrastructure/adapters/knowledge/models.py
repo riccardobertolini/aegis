@@ -48,7 +48,7 @@ class RagContext(BaseModel):
         query: str,
         chunks: list[RetrievedChunk],
         max_chars: int = 4096,
-    ) -> "RagContext":
+    ) -> RagContext:
         """Assemble context text and citations from retrieved chunks."""
         parts: list[str] = []
         citations: list[dict[str, str]] = []

@@ -8,7 +8,8 @@ Air-gapped: only local SQLite, no remote DB.
 """
 from __future__ import annotations
 
-from typing import Generic, List, Optional, Type, TypeVar
+import builtins
+from typing import Generic, TypeVar
 from uuid import UUID
 
 from sqlmodel import SQLModel, select
@@ -20,7 +21,7 @@ T = TypeVar("T", bound=SQLModel)
 class BaseSQLiteRepository(Generic[T]):
     """Generic async CRUD: create / get / list / update / delete."""
 
-    model: Type[T]
+    model: type[T]
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -31,15 +32,15 @@ class BaseSQLiteRepository(Generic[T]):
         await self._session.refresh(entity)
         return entity
 
-    async def get(self, entity_id: str | UUID) -> Optional[T]:
+    async def get(self, entity_id: str | UUID) -> T | None:
         return await self._session.get(self.model, str(entity_id))
 
     # Kept for backwards-compat with old callers that pass session explicitly
-    async def find_by_id(self, entity_id: str | UUID, session: AsyncSession | None = None) -> Optional[T]:
+    async def find_by_id(self, entity_id: str | UUID, session: AsyncSession | None = None) -> T | None:
         sess = session or self._session
         return await sess.get(self.model, str(entity_id))
 
-    async def list(self, limit: int = 100, offset: int = 0) -> List[T]:
+    async def list(self, limit: int = 100, offset: int = 0) -> builtins.list[T]:
         result = await self._session.exec(
             select(self.model).offset(offset).limit(limit)
         )

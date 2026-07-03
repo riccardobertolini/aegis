@@ -7,10 +7,8 @@ Dependencies injected at construction time (DI-friendly):
   - RBACEnforcer
 """
 import hashlib
-import json
 import secrets
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -24,16 +22,13 @@ from backend.domain.ports.security import (
     UserCredentials,
     UserPrincipal,
 )
-from backend.shared.exceptions import AuthenticationError, AuthorizationError
-from backend.infrastructure.security.audit import AuditWriter, AuditReader
+from backend.infrastructure.security.audit import AuditReader, AuditWriter
 from backend.infrastructure.security.backup import BackupService
 from backend.infrastructure.security.encryption import LocalKeyStore
 from backend.infrastructure.security.integrity import ModelIntegrityService
 from backend.infrastructure.security.models import (
     SessionModel,
     UserModel,
-    RoleModel,
-    RolePermissionLink,
 )
 from backend.infrastructure.security.password import hash_password, verify_password
 from backend.infrastructure.security.rbac import RBACEnforcer
@@ -42,6 +37,7 @@ from backend.infrastructure.security.token import (
     decode_access_token,
     hash_token,
 )
+from backend.shared.exceptions import AuthenticationError
 
 _MAX_FAILED = 5  # Lock account after N consecutive failures
 _SESSION_EXPIRY_MINUTES = 60
@@ -53,7 +49,7 @@ class SecurityService(ISecurityPort):
         session: AsyncSession,
         keystore: LocalKeyStore,
         backup_passphrase: str,
-        rbac: Optional[RBACEnforcer] = None,
+        rbac: RBACEnforcer | None = None,
     ) -> None:
         self._session = session
         self._keystore = keystore
@@ -190,10 +186,10 @@ class SecurityService(ISecurityPort):
 
     async def query_audit(
         self,
-        actor_id: Optional[str] = None,
-        resource: Optional[str] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        actor_id: str | None = None,
+        resource: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 100,
     ) -> list[AuditEntry]:
         return await self._audit_reader.query(actor_id, resource, since, until, limit)

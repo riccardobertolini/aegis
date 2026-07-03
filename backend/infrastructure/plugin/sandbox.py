@@ -2,12 +2,21 @@
 from __future__ import annotations
 
 import builtins
-import resource
-import sys
+
+try:
+    import resource  # POSIX only
+except ImportError:  # Windows has no 'resource' module
+    import types as _types
+
+    resource = _types.SimpleNamespace(
+        setrlimit=lambda *a, **k: None,
+        getrlimit=lambda *a, **k: (-1, -1),
+        RLIMIT_AS=0, RLIMIT_CPU=0, RLIMIT_DATA=0,
+        RLIMIT_NOFILE=0, RLIMIT_FSIZE=0, RLIMIT_NPROC=0,
+    )
 import time
 import types
 from pathlib import Path
-from typing import Any
 
 # ---------------------------------------------------------------------------
 # Blocked built-ins (network + shell + dynamic import of dangerous modules)

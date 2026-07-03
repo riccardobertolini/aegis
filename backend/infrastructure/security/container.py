@@ -14,13 +14,14 @@ Example (in main.py):
         app.dependency_overrides[_placeholder_dep] = lambda: container.service
 """
 from dataclasses import dataclass
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.shared.config import Settings, get_settings
 from backend.infrastructure.security.encryption import LocalKeyStore
 from backend.infrastructure.security.rbac import RBACEnforcer
-from backend.infrastructure.security.service import SecurityService
 from backend.infrastructure.security.seeder import seed_roles, seed_superadmin
+from backend.infrastructure.security.service import SecurityService
+from backend.shared.config import Settings, get_settings
 
 
 @dataclass

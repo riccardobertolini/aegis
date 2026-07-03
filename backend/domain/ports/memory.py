@@ -1,11 +1,11 @@
 """Port: Memory Engine (conversation / session state)."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class MemoryRole(str, Enum):
+class MemoryRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -16,7 +16,7 @@ class MemoryEntry:
     session_id: str
     role: MemoryRole
     content: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict = field(default_factory=dict)
     intent: str | None = None
 
@@ -26,7 +26,7 @@ class SessionSummary:
     session_id: str
     summary: str
     turn_count: int
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class IMemoryPort(ABC):

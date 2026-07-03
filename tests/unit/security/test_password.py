@@ -1,8 +1,5 @@
 """Unit tests: Argon2id password hashing."""
-import pytest
-from backend.infrastructure.security.password import (
-    hash_password, verify_password, needs_rehash
-)
+from backend.infrastructure.security.password import hash_password, needs_rehash, verify_password
 
 
 def test_hash_returns_string():

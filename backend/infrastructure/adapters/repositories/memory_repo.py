@@ -1,8 +1,6 @@
 """SQLite repository for MemoryEntry entities."""
 from __future__ import annotations
 
-from typing import List
-
 from sqlmodel import select
 
 from backend.infrastructure.adapters.repositories.base_sqlite import BaseSQLiteRepository
@@ -12,7 +10,7 @@ from backend.infrastructure.database.models import MemoryEntryModel
 class SQLiteMemoryEntryRepository(BaseSQLiteRepository[MemoryEntryModel]):
     model = MemoryEntryModel
 
-    async def find_by_session(self, session_id: str, limit: int = 200) -> List[MemoryEntryModel]:
+    async def find_by_session(self, session_id: str, limit: int = 200) -> list[MemoryEntryModel]:
         result = await self._session.exec(
             select(MemoryEntryModel)
             .where(MemoryEntryModel.session_id == session_id)
@@ -21,7 +19,7 @@ class SQLiteMemoryEntryRepository(BaseSQLiteRepository[MemoryEntryModel]):
         )
         return list(result.all())
 
-    async def find_by_assistant(self, assistant_id: str, limit: int = 500) -> List[MemoryEntryModel]:
+    async def find_by_assistant(self, assistant_id: str, limit: int = 500) -> list[MemoryEntryModel]:
         result = await self._session.exec(
             select(MemoryEntryModel)
             .where(MemoryEntryModel.assistant_id == assistant_id)
@@ -30,7 +28,7 @@ class SQLiteMemoryEntryRepository(BaseSQLiteRepository[MemoryEntryModel]):
         )
         return list(result.all())
 
-    async def find_by_user(self, user_id: str, limit: int = 500) -> List[MemoryEntryModel]:
+    async def find_by_user(self, user_id: str, limit: int = 500) -> list[MemoryEntryModel]:
         result = await self._session.exec(
             select(MemoryEntryModel)
             .where(MemoryEntryModel.user_id == user_id)

@@ -14,12 +14,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 # Register all models before any test runs
 import backend.domain.models  # noqa: F401
-
-from backend.infrastructure.adapters.encryption import EncryptionService
-from backend.infrastructure.adapters.storage import StorageManager
 from backend.infrastructure.adapters.backup_manager import BackupManager
 from backend.infrastructure.adapters.config_manager import ConfigManager
-
+from backend.infrastructure.adapters.encryption import EncryptionService
+from backend.infrastructure.adapters.storage import StorageManager
 
 # ---------------------------------------------------------------------------
 # Database
@@ -41,7 +39,7 @@ async def db_session():
 # Encryption
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def encryption(tmp_path):
     """EncryptionService with per-test temporary key directory."""
     return EncryptionService(key_dir=str(tmp_path / "keys"))
@@ -51,7 +49,7 @@ def encryption(tmp_path):
 # Storage
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def storage(tmp_path, encryption):
     """StorageManager rooted in a temp directory."""
     return StorageManager(
@@ -64,7 +62,7 @@ def storage(tmp_path, encryption):
 # Backup
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def backup_manager(tmp_path, storage, encryption):
     """BackupManager using temp directories."""
     return BackupManager(
@@ -78,7 +76,7 @@ def backup_manager(tmp_path, storage, encryption):
 # Config
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def config_manager(tmp_path, encryption):
     """ConfigManager with isolated temp config directory."""
     return ConfigManager(

@@ -11,7 +11,8 @@ from backend.domain.ports.document import (
 from backend.shared.logging import get_logger
 
 from .chunker import chunk_text
-from .models import ParsedDocument as InternalParsedDocument, TextChunk
+from .models import ParsedDocument as InternalParsedDocument
+from .models import TextChunk
 from .parser_registry import ParserRegistry
 
 logger = get_logger(__name__)
@@ -82,6 +83,7 @@ class DocumentEngine(IDocumentPort):
     ) -> ParsedDocument:
         """IDocumentPort.ingest_file — delegates to synchronous ingest()."""
         import uuid
+
         from backend.domain.ports.document import DocumentStatus
 
         cfg = chunking or ChunkingConfig()
@@ -110,7 +112,7 @@ class DocumentEngine(IDocumentPort):
         """IDocumentPort.ingest_bytes — write to a temp file then delegate."""
         import tempfile
         from pathlib import Path as _Path
-        from backend.domain.ports.document import DocumentStatus
+
 
         suffix = _Path(filename).suffix or ".bin"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:

@@ -1,11 +1,10 @@
 """RAG pipeline — retrieve-then-generate with Mamba SSM."""
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, field
 
-from backend.domain.ports.knowledge import IKnowledgePort, SearchQuery
 from backend.domain.ports.inference import IInferencePort
+from backend.domain.ports.knowledge import IKnowledgePort, SearchQuery
 
 
 @dataclass

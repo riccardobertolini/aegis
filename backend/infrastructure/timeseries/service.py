@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +50,7 @@ class TimeSeriesService:
         unit: str | None = None,
         timestamp: datetime | None = None,
     ) -> None:
-        ts = timestamp or datetime.now(timezone.utc)
+        ts = timestamp or datetime.now(UTC)
         with self._lock:
             self._connect()
             self._conn.execute(

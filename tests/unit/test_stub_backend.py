@@ -1,5 +1,4 @@
 """Unit tests for the stub inference backend."""
-import pytest
 
 from backend.infrastructure.adapters.inference._stub_backend import StubModel, StubTokenizer
 

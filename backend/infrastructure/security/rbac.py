@@ -1,5 +1,5 @@
 """RBAC enforcement: resolves roles → permissions and checks authorization."""
-from typing import Iterable
+from collections.abc import Iterable
 
 from backend.domain.ports.security import DEFAULT_ROLES, Permission
 

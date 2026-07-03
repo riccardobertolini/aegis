@@ -1,5 +1,4 @@
 """Unit tests — TextChunker."""
-import pytest
 from backend.domain.ports.document import ChunkingConfig
 from backend.infrastructure.document.chunker import TextChunker
 

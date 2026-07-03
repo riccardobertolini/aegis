@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
 
 from sqlmodel import select
 
@@ -20,7 +19,7 @@ class SQLiteAuditLogRepository(BaseSQLiteRepository[AuditLogModel]):
     async def delete(self, entity_id: str) -> bool:  # type: ignore[override]
         raise NotImplementedError("Audit log entries cannot be deleted.")
 
-    async def find_by_actor(self, actor_id: str, limit: int = 200) -> List[AuditLogModel]:
+    async def find_by_actor(self, actor_id: str, limit: int = 200) -> list[AuditLogModel]:
         result = await self._session.exec(
             select(AuditLogModel)
             .where(AuditLogModel.actor_id == actor_id)
@@ -30,8 +29,8 @@ class SQLiteAuditLogRepository(BaseSQLiteRepository[AuditLogModel]):
         return list(result.all())
 
     async def find_by_resource(
-        self, resource_type: str, resource_id: Optional[str] = None, limit: int = 200
-    ) -> List[AuditLogModel]:
+        self, resource_type: str, resource_id: str | None = None, limit: int = 200
+    ) -> list[AuditLogModel]:
         stmt = (
             select(AuditLogModel)
             .where(AuditLogModel.resource_type == resource_type)
@@ -45,7 +44,7 @@ class SQLiteAuditLogRepository(BaseSQLiteRepository[AuditLogModel]):
 
     async def find_in_range(
         self, since: datetime, until: datetime, limit: int = 1000
-    ) -> List[AuditLogModel]:
+    ) -> list[AuditLogModel]:
         result = await self._session.exec(
             select(AuditLogModel)
             .where(

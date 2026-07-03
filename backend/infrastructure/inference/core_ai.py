@@ -6,12 +6,11 @@ All engines are injected via constructor (Dependency Injection).
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from backend.domain.ports.core_ai import AIRequest, AIResponse, ICoreAIPort
 from backend.domain.ports.inference import IInferencePort, InferenceRequest
-from backend.domain.ports.memory import IMemoryPort
 from backend.domain.ports.intent import IIntentPort
+from backend.domain.ports.memory import IMemoryPort
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +29,8 @@ class CoreAIService(ICoreAIPort):
     def __init__(
         self,
         inference: IInferencePort,
-        memory: Optional[IMemoryPort] = None,
-        intent: Optional[IIntentPort] = None,
+        memory: IMemoryPort | None = None,
+        intent: IIntentPort | None = None,
         default_model_id: str = "",
         system_prompt: str = "",
         max_context_turns: int = 10,

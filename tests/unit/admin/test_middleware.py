@@ -1,12 +1,8 @@
 """Tests for LocalOnlyMiddleware."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
-from starlette.testclient import TestClient
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from starlette.testclient import TestClient
 
 from backend.api.middleware.localhost_only import LocalOnlyMiddleware
 

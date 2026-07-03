@@ -2,17 +2,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
-from backend.infrastructure.rag.parser import DocumentParser
-from backend.infrastructure.rag.chunker import TextChunker
-from backend.infrastructure.rag.embedder import LocalEmbedder
-from backend.infrastructure.rag.chroma_adapter import ChromaKnowledgeAdapter
-from backend.infrastructure.rag.document_service import DocumentService
-from backend.infrastructure.rag.rag_service import RAGService
 from backend.domain.ports.document import IDocumentPort
-from backend.domain.ports.knowledge import IKnowledgePort
 from backend.domain.ports.inference import IInferencePort
+from backend.domain.ports.knowledge import IKnowledgePort
+from backend.infrastructure.rag.chroma_adapter import ChromaKnowledgeAdapter
+from backend.infrastructure.rag.chunker import TextChunker
+from backend.infrastructure.rag.document_service import DocumentService
+from backend.infrastructure.rag.embedder import LocalEmbedder
+from backend.infrastructure.rag.parser import DocumentParser
+from backend.infrastructure.rag.rag_service import RAGService
 
 
 class DocumentContainer:
@@ -63,14 +62,14 @@ class DocumentContainer:
         cls,
         data_dir: str | Path,
         inference: IInferencePort,
-        models_root: Optional[str | Path] = None,
+        models_root: str | Path | None = None,
         embed_model: str = "all-MiniLM-L6-v2",
         collection_name: str = "aegis_default",
         chunk_size: int = 512,
         chunk_overlap: int = 64,
         default_model_id: str = "",
         document_repo=None,
-    ) -> "DocumentContainer":
+    ) -> DocumentContainer:
         """Build a fully wired DocumentContainer.
 
         Args:

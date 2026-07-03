@@ -8,10 +8,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class ModelMeta:
                 h.update(chunk)
         return h.hexdigest()
 
-    def _find_weight_file(self) -> Optional[Path]:
+    def _find_weight_file(self) -> Path | None:
         for ext in (".pt", ".pth", ".safetensors", ".bin"):
             for p in sorted(self.path.glob(f"*{ext}")):
                 return p
@@ -92,7 +91,7 @@ class MambaModelLoader:
         logger.info("Discovered %d model(s): %s", len(found), found)
         return found
 
-    def get_meta(self, model_id: str) -> Optional[ModelMeta]:
+    def get_meta(self, model_id: str) -> ModelMeta | None:
         return self._meta_cache.get(model_id)
 
     def list_available(self) -> list[str]:
@@ -146,7 +145,7 @@ class MambaModelLoader:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _parse_config(self, directory: Path) -> Optional[ModelMeta]:
+    def _parse_config(self, directory: Path) -> ModelMeta | None:
         config_path = directory / "config.json"
         try:
             with open(config_path) as f:

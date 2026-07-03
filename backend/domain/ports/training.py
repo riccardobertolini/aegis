@@ -1,12 +1,11 @@
 """Port: Training Engine (esteso per Fase 8)."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -39,8 +38,8 @@ class CheckpointInfo:
     epoch: int
     path: str
     train_loss: float
-    val_loss: Optional[float] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    val_loss: float | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -49,10 +48,10 @@ class ExperimentMetrics:
     step: int
     epoch: int
     train_loss: float
-    val_loss: Optional[float] = None
+    val_loss: float | None = None
     learning_rate: float = 0.0
     tokens_per_second: float = 0.0
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -62,12 +61,12 @@ class TrainingJob:
     progress: float = 0.0
     current_step: int = 0
     current_epoch: int = 0
-    best_val_loss: Optional[float] = None
-    output_model_path: Optional[str] = None
-    model_sha256: Optional[str] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    best_val_loss: float | None = None
+    output_model_path: str | None = None
+    model_sha256: str | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     logs: list[str] = field(default_factory=list)
     checkpoints: list[CheckpointInfo] = field(default_factory=list)
 

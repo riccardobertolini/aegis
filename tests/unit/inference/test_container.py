@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from backend.infrastructure.inference.container import InferenceContainer
-from backend.domain.ports.inference import IInferencePort
 from backend.domain.ports.core_ai import ICoreAIPort
+from backend.domain.ports.inference import IInferencePort
+from backend.infrastructure.inference.container import InferenceContainer
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_models_root(tmp_path: Path) -> Path:
     root = tmp_path / "models"
     root.mkdir()

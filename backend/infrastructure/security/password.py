@@ -1,6 +1,6 @@
 """Password hashing using Argon2id (argon2-cffi) — no external service."""
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError
+from argon2.exceptions import VerificationError, VerifyMismatchError
 
 _ph = PasswordHasher(
     time_cost=3,       # iterations

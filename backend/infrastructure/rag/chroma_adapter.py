@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import uuid
-from typing import Optional
 
 from backend.domain.ports.knowledge import (
     Document,
@@ -16,8 +14,8 @@ from backend.domain.ports.knowledge import (
     SearchQuery,
     SearchResult,
 )
+from backend.infrastructure.rag.chunker import Chunk, TextChunker
 from backend.infrastructure.rag.embedder import LocalEmbedder
-from backend.infrastructure.rag.chunker import TextChunker, Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -168,11 +166,11 @@ class ChromaKnowledgeAdapter(IKnowledgePort):
     ) -> list[SearchResult]:
         coll = self._get_collection()
         where = self._build_where(filters)
-        kwargs = dict(
-            query_embeddings=[query_embedding],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"],
-        )
+        kwargs = {
+            "query_embeddings": [query_embedding],
+            "n_results": top_k,
+            "include": ["documents", "metadatas", "distances"],
+        }
         if where:
             kwargs["where"] = where
 
@@ -235,7 +233,7 @@ class ChromaKnowledgeAdapter(IKnowledgePort):
         return all_docs[start: start + page_size]
 
     @staticmethod
-    def _build_where(filters: dict) -> Optional[dict]:
+    def _build_where(filters: dict) -> dict | None:
         """Convert simple key=value filters to ChromaDB where clause."""
         if not filters:
             return None

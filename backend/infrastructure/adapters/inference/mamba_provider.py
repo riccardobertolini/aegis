@@ -11,9 +11,9 @@ Design decisions:
 from __future__ import annotations
 
 import asyncio
-import logging
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -227,6 +227,7 @@ class MambaModelProvider(IModelProvider):
         config: RuntimeConfig,
     ) -> tuple[Any, Any]:
         import json as _json
+
         import torch  # type: ignore[import]
         from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel  # type: ignore[import]
         from transformers import AutoTokenizer  # type: ignore[import]
@@ -251,8 +252,9 @@ class MambaModelProvider(IModelProvider):
         device: str,
     ) -> tuple[Any, Any]:
         import json as _json
-        import torch  # type: ignore[import]
+
         import mamba_minimal as mm  # type: ignore[import]
+        import torch  # type: ignore[import]
 
         with open(cfg_path) as f:
             cfg = _json.load(f)
@@ -286,7 +288,7 @@ class MambaModelProvider(IModelProvider):
 
     def _run_generate(self, entry: _LoadedModel, prompt_ids: list[int], config: RuntimeConfig) -> list[int]:
         """Blocking generate — called inside executor."""
-        from backend.infrastructure.adapters.inference._stub_backend import StubModel, StubTokenizer
+        from backend.infrastructure.adapters.inference._stub_backend import StubModel
         if isinstance(entry.model, StubModel):
             return entry.model.generate(prompt_ids, config.max_new_tokens)
         return self._torch_generate(entry, prompt_ids, config)
@@ -294,8 +296,7 @@ class MambaModelProvider(IModelProvider):
     def _iter_generate(self, entry: _LoadedModel, prompt_ids: list[int], config: RuntimeConfig):
         """Blocking generator — yields one token at a time."""
         tokens = self._run_generate(entry, prompt_ids, config)
-        for t in tokens:
-            yield t
+        yield from tokens
 
     def _torch_generate(self, entry: _LoadedModel, prompt_ids: list[int], config: RuntimeConfig) -> list[int]:
         """Real torch-based generation (mamba-ssm or mamba-minimal)."""

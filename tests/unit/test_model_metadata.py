@@ -7,7 +7,6 @@ from backend.domain.model.model_metadata import (
     ModelMetadata,
     ModelVersion,
     QuantizationLevel,
-    DeviceTarget,
 )
 
 

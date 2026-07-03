@@ -1,13 +1,14 @@
 """Unit tests for DocumentParser."""
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from backend.infrastructure.rag.parser import DocumentParser
 
 
-@pytest.fixture()
+@pytest.fixture
 def parser() -> DocumentParser:
     return DocumentParser(max_file_bytes=10 * 1024 * 1024)
 

@@ -2,19 +2,17 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 
-from backend.infrastructure.inference.loader import MambaModelLoader, ModelMeta
-
+from backend.infrastructure.inference.loader import MambaModelLoader
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def models_root(tmp_path: Path) -> Path:
     return tmp_path / "models"
 

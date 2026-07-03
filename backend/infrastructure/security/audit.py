@@ -10,14 +10,12 @@ import hashlib
 import hmac
 import json
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from backend.domain.ports.security import AuditEntry
 from backend.infrastructure.security.models import AuditLogModel
-
 
 _GENESIS_HMAC = "0" * 64  # Starting value for chain
 
@@ -83,10 +81,10 @@ class AuditReader:
 
     async def query(
         self,
-        actor_id: Optional[str] = None,
-        resource: Optional[str] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        actor_id: str | None = None,
+        resource: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 100,
     ) -> list[AuditEntry]:
         stmt = select(AuditLogModel).order_by(AuditLogModel.timestamp.desc()).limit(limit)

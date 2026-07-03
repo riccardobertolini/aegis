@@ -1,10 +1,10 @@
 """Unit tests for ChromaKnowledgeAdapter (mock embedder + in-memory Chroma)."""
 from __future__ import annotations
 
-import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.domain.ports.knowledge import Document, SearchQuery
 from backend.infrastructure.rag.chunker import TextChunker
@@ -19,7 +19,7 @@ def _make_embedder(dim: int = 8) -> MagicMock:
     return emb
 
 
-@pytest.fixture()
+@pytest.fixture
 def chroma_adapter(tmp_path: Path):
     try:
         import chromadb  # noqa: F401

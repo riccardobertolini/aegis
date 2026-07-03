@@ -1,12 +1,12 @@
 """Unit tests for DocumentService."""
 from __future__ import annotations
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from backend.infrastructure.rag.parser import DocumentParser
+import pytest
+
 from backend.infrastructure.rag.document_service import DocumentService
+from backend.infrastructure.rag.parser import DocumentParser
 
 
 def _make_knowledge_mock() -> MagicMock:
@@ -17,7 +17,7 @@ def _make_knowledge_mock() -> MagicMock:
     return m
 
 
-@pytest.fixture()
+@pytest.fixture
 def service() -> DocumentService:
     return DocumentService(
         parser=DocumentParser(),

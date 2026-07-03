@@ -1,12 +1,10 @@
 """REST endpoints for Intent Engine."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from backend.infrastructure.adapters.intent.intent_classifier import IntentClassifier
 from backend.infrastructure.adapters.intent.models import (
     IntentLabel,
-    ModalityRequest,
-    ModalityResponse,
 )
 
 router = APIRouter(prefix="/intent", tags=["intent"])

@@ -11,7 +11,6 @@ Naming convention:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from sqlmodel import Field, SQLModel
@@ -32,7 +31,7 @@ def _uuid() -> str:
 class Role(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(max_length=64, unique=True, index=True)
-    description: Optional[str] = None
+    description: str | None = None
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
@@ -54,11 +53,11 @@ class Permission(SQLModel, table=True):
 class User(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     username: str = Field(max_length=128, unique=True, index=True)
-    email: Optional[str] = Field(default=None, max_length=256)
+    email: str | None = Field(default=None, max_length=256)
     hashed_password: str
-    role_id: Optional[str] = Field(default=None, foreign_key="role.id")
+    role_id: str | None = Field(default=None, foreign_key="role.id")
     is_active: bool = Field(default=True)
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -70,12 +69,12 @@ class User(SQLModel, table=True):
 class Assistant(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(max_length=256)
-    description: Optional[str] = None
+    description: str | None = None
     # AES-256-GCM encrypted fields
-    system_prompt_enc: Optional[str] = None
-    config_enc: Optional[str] = None
+    system_prompt_enc: str | None = None
+    config_enc: str | None = None
     is_active: bool = Field(default=True)
-    owner_id: Optional[str] = Field(default=None, foreign_key="user.id")
+    owner_id: str | None = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -87,8 +86,8 @@ class Assistant(SQLModel, table=True):
 class KnowledgeBase(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(max_length=256, unique=True)
-    description: Optional[str] = None
-    assistant_id: Optional[str] = Field(default=None, foreign_key="assistant.id")
+    description: str | None = None
+    assistant_id: str | None = Field(default=None, foreign_key="assistant.id")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -97,7 +96,7 @@ class Category(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(max_length=256)
     knowledge_base_id: str = Field(foreign_key="knowledgebase.id", index=True)
-    parent_id: Optional[str] = Field(default=None, foreign_key="category.id")
+    parent_id: str | None = Field(default=None, foreign_key="category.id")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -110,14 +109,14 @@ class Document(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     filename: str = Field(max_length=512)
     original_filename: str = Field(max_length=512)
-    mime_type: Optional[str] = Field(default=None, max_length=128)
-    size_bytes: Optional[int] = None
-    sha256: Optional[str] = Field(default=None, max_length=64, index=True)
+    mime_type: str | None = Field(default=None, max_length=128)
+    size_bytes: int | None = None
+    sha256: str | None = Field(default=None, max_length=64, index=True)
     storage_path: str = Field(max_length=1024)
     is_encrypted: bool = Field(default=False)
-    knowledge_base_id: Optional[str] = Field(default=None, foreign_key="knowledgebase.id")
-    category_id: Optional[str] = Field(default=None, foreign_key="category.id")
-    uploader_id: Optional[str] = Field(default=None, foreign_key="user.id")
+    knowledge_base_id: str | None = Field(default=None, foreign_key="knowledgebase.id")
+    category_id: str | None = Field(default=None, foreign_key="category.id")
+    uploader_id: str | None = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -131,10 +130,10 @@ class AegisModel(SQLModel, table=True):
     name: str = Field(max_length=256)
     architecture: str = Field(max_length=64, default="mamba-ssm")
     storage_path: str = Field(max_length=1024)
-    size_bytes: Optional[int] = None
-    sha256: Optional[str] = Field(default=None, max_length=64)
+    size_bytes: int | None = None
+    sha256: str | None = Field(default=None, max_length=64)
     is_active: bool = Field(default=False)
-    metadata_json: Optional[str] = None
+    metadata_json: str | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -147,10 +146,10 @@ class Dataset(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(max_length=256)
     storage_path: str = Field(max_length=1024)
-    model_id: Optional[str] = Field(default=None, foreign_key="aegismodel.id")
+    model_id: str | None = Field(default=None, foreign_key="aegismodel.id")
     status: str = Field(default="pending", max_length=32)
-    row_count: Optional[int] = None
-    size_bytes: Optional[int] = None
+    row_count: int | None = None
+    size_bytes: int | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -162,10 +161,10 @@ class Dataset(SQLModel, table=True):
 class MemoryChunk(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     assistant_id: str = Field(foreign_key="assistant.id", index=True)
-    user_id: Optional[str] = Field(default=None, foreign_key="user.id")
+    user_id: str | None = Field(default=None, foreign_key="user.id")
     # Stored encrypted; plaintext never persisted
     content_enc: str
-    embedding_path: Optional[str] = Field(default=None, max_length=1024)
+    embedding_path: str | None = Field(default=None, max_length=1024)
     importance: float = Field(default=0.5)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
@@ -180,10 +179,10 @@ class Version(SQLModel, table=True):
     entity_type: str = Field(max_length=64, index=True)
     entity_id: str = Field(index=True)
     version_number: int
-    tag: Optional[str] = Field(default=None, max_length=64)
+    tag: str | None = Field(default=None, max_length=64)
     # Full JSON snapshot of the entity at this version
     snapshot_json: str
-    created_by: Optional[str] = None
+    created_by: str | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -196,7 +195,7 @@ class Workflow(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(max_length=256)
     definition_json: str
-    assistant_id: Optional[str] = Field(default=None, foreign_key="assistant.id")
+    assistant_id: str | None = Field(default=None, foreign_key="assistant.id")
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
@@ -210,8 +209,8 @@ class BackupRecord(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     filename: str = Field(max_length=512)
     storage_path: str = Field(max_length=1024)
-    size_bytes: Optional[int] = None
-    sha256: Optional[str] = Field(default=None, max_length=64)
+    size_bytes: int | None = None
+    sha256: str | None = Field(default=None, max_length=64)
     is_encrypted: bool = Field(default=True)
     backup_type: str = Field(default="full", max_length=32)
     created_at: datetime = Field(default_factory=_now)
@@ -224,11 +223,11 @@ class BackupRecord(SQLModel, table=True):
 
 class AuditLogEntry(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
-    actor_id: Optional[str] = Field(default=None, index=True)
+    actor_id: str | None = Field(default=None, index=True)
     action: str = Field(max_length=128, index=True)
-    resource: Optional[str] = Field(default=None, max_length=256)
-    resource_id: Optional[str] = None
-    detail_json: Optional[str] = None
-    ip_address: Optional[str] = Field(default=None, max_length=64)
+    resource: str | None = Field(default=None, max_length=256)
+    resource_id: str | None = None
+    detail_json: str | None = None
+    ip_address: str | None = Field(default=None, max_length=64)
     created_at: datetime = Field(default_factory=_now, index=True)
     updated_at: datetime = Field(default_factory=_now)

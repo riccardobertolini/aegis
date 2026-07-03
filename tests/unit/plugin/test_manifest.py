@@ -8,8 +8,8 @@ from backend.infrastructure.plugin.manifest import (
     ManifestError,
     load_manifest,
     sign_manifest,
-    verify_manifest_signature,
     verify_entry_checksum,
+    verify_manifest_signature,
 )
 
 

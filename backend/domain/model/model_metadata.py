@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 
-class QuantizationLevel(str, Enum):
+class QuantizationLevel(StrEnum):
     """Supported quantization levels."""
     NONE = "none"       # full precision (fp32 / fp16)
     INT8 = "int8"       # 8-bit integer
@@ -16,7 +16,7 @@ class QuantizationLevel(str, Enum):
     BF16 = "bf16"       # bfloat16
 
 
-class DeviceTarget(str, Enum):
+class DeviceTarget(StrEnum):
     """Supported inference devices."""
     CPU  = "cpu"
     CUDA = "cuda"   # NVIDIA GPU
@@ -35,7 +35,7 @@ class ModelVersion:
         return f"{self.major}.{self.minor}.{self.patch}"
 
     @classmethod
-    def from_string(cls, s: str) -> "ModelVersion":
+    def from_string(cls, s: str) -> ModelVersion:
         parts = s.split(".")
         if len(parts) != 3:  # noqa: PLR2004
             raise ValueError(f"Invalid version string: {s!r}")

@@ -1,13 +1,12 @@
 """Unit tests: AuditWriter/Reader with HMAC chain verification."""
-import asyncio
-import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.domain.ports.security import AuditEntry
-from backend.infrastructure.security.audit import AuditWriter, AuditReader
+from backend.infrastructure.security.audit import AuditReader, AuditWriter
 from backend.infrastructure.security.models import AuditLogModel
-
 
 _AUDIT_KEY = b"test-audit-key-32-bytes-padding!"
 
@@ -18,15 +17,15 @@ def mock_session():
 
 
 def _make_entry(**kwargs) -> AuditEntry:
-    defaults = dict(
-        event_type="auth.login",
-        actor_id="u1",
-        actor_username="alice",
-        resource="session",
-        action="authenticate",
-        outcome="success",
-        timestamp=datetime(2025, 1, 1, 12, 0, 0),
-    )
+    defaults = {
+        "event_type": "auth.login",
+        "actor_id": "u1",
+        "actor_username": "alice",
+        "resource": "session",
+        "action": "authenticate",
+        "outcome": "success",
+        "timestamp": datetime(2025, 1, 1, 12, 0, 0),
+    }
     defaults.update(kwargs)
     return AuditEntry(**defaults)
 

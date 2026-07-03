@@ -1,7 +1,7 @@
 """API router — Time Series Engine."""
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from backend.domain.ports.timeseries import Metric, MetricQuery

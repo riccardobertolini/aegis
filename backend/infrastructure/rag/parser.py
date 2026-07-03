@@ -8,10 +8,7 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
-import mimetypes
-import uuid
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.document import ParsedDocument
 

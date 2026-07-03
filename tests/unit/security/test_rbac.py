@@ -1,5 +1,6 @@
 """Unit tests: RBAC enforcer."""
 import pytest
+
 from backend.domain.ports.security import Permission
 from backend.infrastructure.security.rbac import RBACEnforcer
 

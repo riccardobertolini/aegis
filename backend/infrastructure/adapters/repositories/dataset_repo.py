@@ -1,7 +1,6 @@
 """SQLite repository for Dataset entities."""
 from __future__ import annotations
 
-from typing import List
 from uuid import UUID
 
 from sqlmodel import select
@@ -18,7 +17,7 @@ class DatasetRepository(BaseSQLiteRepository[Dataset]):
 
     async def find_by_model(
         self, model_id: UUID, session: AsyncSession
-    ) -> List[Dataset]:
+    ) -> list[Dataset]:
         result = await session.exec(
             select(Dataset).where(Dataset.model_id == model_id)
         )
@@ -26,7 +25,7 @@ class DatasetRepository(BaseSQLiteRepository[Dataset]):
 
     async def find_by_status(
         self, status: str, session: AsyncSession
-    ) -> List[Dataset]:
+    ) -> list[Dataset]:
         result = await session.exec(
             select(Dataset).where(Dataset.status == status)
         )

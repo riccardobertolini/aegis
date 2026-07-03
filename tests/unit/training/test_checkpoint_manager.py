@@ -1,9 +1,8 @@
+import pytest
+pytest.importorskip("torch")
 """Unit tests — CheckpointManager (mocked torch)."""
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from backend.infrastructure.training.checkpoint_manager import CheckpointManager
 

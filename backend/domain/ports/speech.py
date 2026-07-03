@@ -1,7 +1,6 @@
 """Port: Speech Engine (STT / TTS — offline only)."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -17,7 +16,7 @@ class TranscriptionResult:
     language: str
     confidence: float
     segments: list[dict] = field(default_factory=list)  # [{start, end, text}]
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -35,7 +34,7 @@ class SynthesisResult:
     sample_rate: int
     encoding: str        # "wav" | "ogg"
     duration_s: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class ISpeechPort(ABC):

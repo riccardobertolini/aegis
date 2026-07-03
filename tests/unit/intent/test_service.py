@@ -1,6 +1,7 @@
 """Unit tests for IntentService hybrid flow."""
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from backend.domain.ports.intent import IntentMode, IntentRequest
 from backend.domain.ports.knowledge import Document, SearchResult

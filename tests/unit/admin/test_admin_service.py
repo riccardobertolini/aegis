@@ -6,20 +6,14 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlmodel import SQLModel
-from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from backend.infrastructure.administration.service import AdministrationService
-from backend.infrastructure.administration.models import (
-    Assistant, AssistantTemplate, Workflow, Rule,
-    Category, FeatureToggle, LanguageConfig, UsageEvent,
-)
-
 
 DB_URL = "sqlite+aiosqlite:///:memory:"
 

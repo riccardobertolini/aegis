@@ -4,7 +4,6 @@ from __future__ import annotations
 import shutil
 import time
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.plugin import (
     IPluginPort,
@@ -13,7 +12,6 @@ from backend.domain.ports.plugin import (
     PluginStatus,
 )
 from backend.infrastructure.plugin.manifest import (
-    ManifestError,
     load_manifest,
     verify_entry_checksum,
     verify_manifest_signature,
@@ -164,7 +162,7 @@ class PluginService(IPluginPort):
     async def list_plugins(self) -> list[PluginManifest]:
         return self._registry.all()
 
-    async def get_manifest(self, plugin_id: str) -> Optional[PluginManifest]:
+    async def get_manifest(self, plugin_id: str) -> PluginManifest | None:
         return self._registry.get(plugin_id)
 
     async def verify_integrity(self, plugin_id: str) -> bool:

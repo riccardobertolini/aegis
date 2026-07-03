@@ -4,9 +4,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from backend.domain.ports.plugin import (
     ALLOWED_PERMISSIONS,
@@ -73,7 +72,7 @@ def load_manifest(plugin_dir: Path) -> PluginManifest:
         entry_point=entry_point,
         signature=data.get("signature"),
         checksum=checksum,
-        installed_at=datetime.now(timezone.utc),
+        installed_at=datetime.now(UTC),
         status=PluginStatus.INACTIVE,
     )
 

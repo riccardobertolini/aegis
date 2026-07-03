@@ -1,6 +1,7 @@
 """Unit tests: encrypted backup / restore."""
-import pytest
 from pathlib import Path
+
+import pytest
 
 from backend.infrastructure.security.backup import BackupService
 
