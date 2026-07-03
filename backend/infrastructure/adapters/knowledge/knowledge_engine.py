@@ -214,3 +214,27 @@ class KnowledgeEngine(IKnowledgePort):
             "consistent": count == kb.chunk_count,
             "status": "ok" if ok else "error",
         }
+
+    # ------------------------------------------------------------------ #
+    # IKnowledgePort — required interface methods                         #
+    # ------------------------------------------------------------------ #
+
+    def ingest(self, kb_id: str, path: str | Path, force_reindex: bool = False) -> int:
+        """IKnowledgePort.ingest — delegates to add_document."""
+        return self.add_document(kb_id, path, force_reindex=force_reindex)
+
+    def search(self, kb_id: str, query: str, top_k: int | None = None) -> list[RetrievedChunk]:
+        """IKnowledgePort.search — delegates to retrieve."""
+        return self.retrieve(kb_id, query, top_k=top_k)
+
+    def delete(self, kb_id: str, document_id: str | None = None) -> None:
+        """IKnowledgePort.delete — deletes a document, or the whole KB if no document_id."""
+        if document_id is not None:
+            self.remove_document(kb_id, document_id)
+        else:
+            self.delete_kb(kb_id)
+
+    def list_documents(self, kb_id: str) -> list[str]:
+        """IKnowledgePort.list_documents — returns registered chunk/document metadata for a KB."""
+        kb = self.get_kb(kb_id)
+        return [kb.kb_id]
