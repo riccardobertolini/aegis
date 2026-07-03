@@ -236,9 +236,9 @@ async def register_model(
 @router.post("/models/{model_id}/verify")
 async def verify_model(
     model_id: str,
-    model_path: str = Query(...),
     _: Annotated[None, Depends(require_permission(Permission.MODEL_READ))],
     svc: SecurityDep,
+    model_path: str = Query(...),
 ):
     result = await svc.verify_model_integrity(model_id, model_path)
     if not result.ok:
